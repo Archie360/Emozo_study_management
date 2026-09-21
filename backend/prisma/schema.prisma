@@ -1,0 +1,217 @@
+// Prisma schema for the Study and Task Management Application.
+// Modeled directly from the technical spec sections 4-10 and 46
+// (STUDY, STUDY TYPE, STUDY TYPE TASK, TASK, TASK date/status history, audit log).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STANDARD
+  ADMIN
+}
+
+enum StudyStatus {
+  DRAFT
+  ACTIVE
+  COMPLETE
+  CANCELLED
+}
+
+enum StudyTypeStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// Not explicitly specified in the document, but required by every
+// owner_user_id / created_by / changed_by foreign key in the spec.
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole @default(STANDARD)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ownedStudies         Study[]             @relation("StudyOwner")
+  createdStudies       Study[]             @relation("StudyCreatedBy")
+  createdStudyTypes    StudyType[]
+  createdTasks         Task[]              @relation("TaskCreatedBy")
+  deletedTasks         Task[]              @relation("TaskDeletedBy")
+  dateHistoryChanges   TaskDateHistory[]
+  statusHistoryChanges TaskStatusHistory[]
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+// 5.1 STUDY TYPE Table
+model StudyType {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  status      StudyTypeStatus @default(ACTIVE)
+  createdBy   String          @map("created_by")
+  creator     User            @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  archivedAt  DateTime?       @map("archived_at")
+  // Optimistic concurrency (spec 49)
+  version     Int             @default(1)
+
+  tasks   StudyTypeTask[]
+  studies Study[]
+
+  @@map("study_types")
+}
+
+// 6. STUDY TYPE TASK Data Definition
+model StudyTypeTask {
+  id                  String    @id @default(uuid())
+  studyTypeId         String    @map("study_type_id")
+  studyType           StudyType @relation(fields: [studyTypeId], references: [id], onDelete: Cascade)
+  taskName            String    @map("task_name")
+  description         String?
+  sequenceNumber      Int       @map("sequence_number")
+  defaultDurationDays Int?      @map("default_duration_days")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Sequence must be unique within a STUDY TYPE (spec 6)
+  @@unique([studyTypeId, sequenceNumber])
+  @@map("study_type_tasks")
+}
+
+// 4.1 STUDY Table
+model Study {
+  id                            String      @id @default(uuid())
+  studyName                     String      @map("study_name")
+  studyTypeId                   String?     @map("study_type_id")
+  studyType                     StudyType?  @relation(fields: [studyTypeId], references: [id])
+  description                   String?
+  ownerUserId                   String      @map("owner_user_id")
+  owner                         User        @relation("StudyOwner", fields: [ownerUserId], references: [id])
+  clientBusinessUnit            String?     @map("client_business_unit")
+  priority                      Priority?
+  originalStartDate             DateTime?   @map("original_start_date") @db.Date
+  originalCompletionDate        DateTime?   @map("original_completion_date") @db.Date
+  // Calculated field, persisted for query performance (spec 21, 58)
+  currentExpectedCompletionDate DateTime?   @map("current_expected_completion_date") @db.Date
+  status                        StudyStatus @default(DRAFT)
+  createdBy                     String      @map("created_by")
+  creator                       User        @relation("StudyCreatedBy", fields: [createdBy], references: [id])
+  createdAt                     DateTime    @default(now()) @map("created_at")
+  updatedAt                     DateTime    @updatedAt @map("updated_at")
+  completedAt                   DateTime?   @map("completed_at")
+  archivedAt                    DateTime?   @map("archived_at")
+  // Optimistic concurrency (spec 49)
+  version                       Int         @default(1)
+
+  tasks Task[]
+
+  @@index([status])
+  @@index([ownerUserId])
+  @@index([studyTypeId])
+  @@index([currentExpectedCompletionDate])
+  @@map("studies")
+}
+
+// 7. TASK Data Definition
+model Task {
+  id                    String     @id @default(uuid())
+  studyId               String     @map("study_id")
+  study                 Study      @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  // Provenance only; no live link back to the template (spec 65)
+  sourceStudyTypeTaskId String?    @map("source_study_type_task_id")
+  taskName              String     @map("task_name")
+  description           String?
+  sequenceNumber        Int        @map("sequence_number")
+  currentStartDate      DateTime   @map("current_start_date") @db.Date
+  currentEndDate        DateTime   @map("current_end_date") @db.Date
+  status                TaskStatus @default(NOT_STARTED)
+  dateChangeCount       Int        @default(0) @map("date_change_count")
+  createdBy             String     @map("created_by")
+  creator               User       @relation("TaskCreatedBy", fields: [createdBy], references: [id])
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
+  completedAt           DateTime?  @map("completed_at")
+  // Soft delete pattern (spec 38)
+  deletedAt             DateTime?  @map("deleted_at")
+  deletedBy             String?    @map("deleted_by")
+  deleter               User?      @relation("TaskDeletedBy", fields: [deletedBy], references: [id])
+  // Optimistic concurrency (spec 49)
+  version               Int        @default(1)
+
+  dateHistory   TaskDateHistory[]
+  statusHistory TaskStatusHistory[]
+
+  @@index([studyId])
+  @@index([status])
+  @@map("tasks")
+}
+
+// 8. TASK Date History
+model TaskDateHistory {
+  id                String   @id @default(uuid())
+  taskId            String   @map("task_id")
+  task              Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  previousStartDate DateTime @map("previous_start_date") @db.Date
+  previousEndDate   DateTime @map("previous_end_date") @db.Date
+  newStartDate      DateTime @map("new_start_date") @db.Date
+  newEndDate        DateTime @map("new_end_date") @db.Date
+  versionNumber     Int      @map("version_number")
+  changedBy         String   @map("changed_by")
+  changer           User     @relation(fields: [changedBy], references: [id])
+  changedAt         DateTime @default(now()) @map("changed_at")
+
+  @@index([taskId])
+  @@map("task_date_history")
+}
+
+// 9. TASK Status History
+model TaskStatusHistory {
+  id             String     @id @default(uuid())
+  taskId         String     @map("task_id")
+  task           Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  previousStatus TaskStatus @map("previous_status")
+  newStatus      TaskStatus @map("new_status")
+  changedBy      String     @map("changed_by")
+  changer        User       @relation(fields: [changedBy], references: [id])
+  changedAt      DateTime   @default(now()) @map("changed_at")
+
+  @@index([taskId])
+  @@map("task_status_history")
+}
+
+// 10. General Audit Log
+model AuditLog {
+  id            String   @id @default(uuid())
+  entityType    String   @map("entity_type")
+  entityId      String   @map("entity_id")
+  action        String
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id])
+  previousValue Json?    @map("previous_value")
+  newValue      Json?    @map("new_value")
+  timestamp     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}
