@@ -8,7 +8,7 @@ import { User } from "./types";
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (email: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -38,9 +38,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const login = useCallback(
-    async (email: string) => {
-      const { token, user } = await api.post<{ token: string; user: User }>("/auth/dev-login", {
+    async (email: string, password: string) => {
+      const { token, user } = await api.post<{ token: string; user: User }>("/auth/login", {
         email,
+        password,
       });
       window.localStorage.setItem("token", token);
       window.localStorage.setItem("user", JSON.stringify(user));

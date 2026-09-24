@@ -3,27 +3,30 @@ import { UserRole } from "@prisma/client";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { authenticate, signToken } from "../../middleware/auth";
 import { requireAdmin } from "../../middleware/authorize";
-import { createUser, getUserByEmail, listUsers, updateUserRole } from "./users.service";
-import { ValidationError } from "../../utils/errors";
+import { createUser, listUsers, updateUserRole, verifyLogin } from "./users.service";
+import { NotAuthenticatedError, ValidationError } from "../../utils/errors";
 
 export const usersRouter = Router();
 
 /**
- * Development-only login stub. Authentication is intentionally isolated
- * from domain logic (spec 50) so this can be replaced by real SSO
+ * Email/password login. Authentication is intentionally isolated from
+ * domain logic (spec 50) so this can be replaced by real SSO
  * (Entra ID / Google Workspace / Auth0) without touching any other module —
  * only this handler and `authenticate` would change.
  */
 usersRouter.post(
-  "/auth/dev-login",
+  "/auth/login",
   asyncHandler(async (req, res) => {
-    const email = req.body?.email as string | undefined;
-    if (!email) throw new ValidationError("Email is required.", { email: "Required" });
-
-    const user = await getUserByEmail(email);
-    if (!user) {
-      throw new ValidationError("No user found with that email. Create one via POST /api/v1/users first.");
+    const { email, password } = req.body as { email?: string; password?: string };
+    if (!email || !password) {
+      throw new ValidationError("Email and password are required.", {
+        ...(email ? {} : { email: "Required" }),
+        ...(password ? {} : { password: "Required" }),
+      });
     }
+
+    const user = await verifyLogin(email, password);
+    if (!user) throw new NotAuthenticatedError("Invalid email or password.");
 
     const token = signToken(user.id, user.role);
     res.json({ token, user });
@@ -47,8 +50,13 @@ usersRouter.post(
   "/users",
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const { email, name, role } = req.body as { email: string; name: string; role?: UserRole };
-    const user = await createUser({ email, name, role });
+    const { email, name, password, role } = req.body as {
+      email: string;
+      name: string;
+      password?: string;
+      role?: UserRole;
+    };
+    const user = await createUser({ email, name, password, role });
     res.status(201).json(user);
   })
 );

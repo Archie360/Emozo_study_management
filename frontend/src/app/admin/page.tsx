@@ -113,6 +113,7 @@ function RoleRow({ targetUser, onSaved }: { targetUser: User; onSaved: () => voi
 function CreateUserForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("STANDARD");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -123,9 +124,10 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
     setError(null);
     setFieldErrors({});
     try {
-      await api.post("/users", { name, email, role });
+      await api.post("/users", { name, email, password, role });
       setName("");
       setEmail("");
+      setPassword("");
       setRole("STANDARD");
       onCreated();
     } catch (err) {
@@ -151,6 +153,15 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
         <Field label="Email" error={fieldErrors.email}>
           <input type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
+        <Field label="Password" error={fieldErrors.password}>
+          <input
+            type="password"
+            className={inputClass}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 8 characters"
+          />
+        </Field>
         <Field label="Role">
           <select className={inputClass} value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
             <option value="STANDARD">Standard</option>
@@ -159,7 +170,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
         </Field>
       </div>
       <div className="mt-4 flex justify-end">
-        <Button onClick={create} disabled={submitting || !name || !email}>
+        <Button onClick={create} disabled={submitting || !name || !email || !password}>
           {submitting ? "Creating…" : "Create User"}
         </Button>
       </div>
