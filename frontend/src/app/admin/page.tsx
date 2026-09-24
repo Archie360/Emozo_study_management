@@ -90,7 +90,7 @@ function RoleRow({ targetUser, onSaved }: { targetUser: User; onSaved: () => voi
       <td className="px-4 py-3 text-gray-500">{targetUser.email}</td>
       <td className="px-4 py-3">
         <select
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+          className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900"
           value={role}
           onChange={(e) => setRole(e.target.value as UserRole)}
         >

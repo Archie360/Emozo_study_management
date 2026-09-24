@@ -8,7 +8,7 @@ import { useApi } from "@/lib/useApi";
 import { Study, StudyStatus, Paginated } from "@/lib/types";
 import { formatDate } from "@/lib/format";
 import { StudyStatusBadge, PriorityBadge } from "@/components/Badge";
-import { Card, ErrorBanner, ProgressBar } from "@/components/ui";
+import { Card, ErrorBanner, inputClass, ProgressBar } from "@/components/ui";
 
 // Spec 30: STUDY List Screen — status filter (default ACTIVE), search.
 const STATUS_TABS: (StudyStatus | "ALL")[] = ["ACTIVE", "DRAFT", "COMPLETE", "CANCELLED", "ALL"];
@@ -57,7 +57,7 @@ export default function StudiesListPage() {
           placeholder="Search name, ID, owner, type…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-72 rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-gray-500 focus:outline-none"
+          className={`w-72 ${inputClass}`}
         />
       </div>
 

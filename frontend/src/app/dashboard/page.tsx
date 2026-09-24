@@ -7,8 +7,7 @@ import { api, toQuery } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { ActiveStudyReportItem, Paginated } from "@/lib/types";
 import { formatDate, formatScheduleVariance } from "@/lib/format";
-import { ProgressBar } from "@/components/ui";
-import { Card, ErrorBanner } from "@/components/ui";
+import { Card, ErrorBanner, inputClass, ProgressBar } from "@/components/ui";
 
 const SORT_OPTIONS = [
   { value: "last_updated:desc", label: "Last Updated" },
@@ -49,12 +48,12 @@ export default function DashboardPage() {
           placeholder="Search study name…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-64 rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-gray-500 focus:outline-none"
+          className={`w-64 ${inputClass}`}
         />
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-gray-500 focus:outline-none"
+          className={inputClass}
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
