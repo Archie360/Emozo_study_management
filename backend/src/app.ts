@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import { env } from "./config/env";
 import { authenticate } from "./middleware/auth";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { usersRouter } from "./modules/users/users.routes";
@@ -15,7 +16,7 @@ export function createApp() {
   // Spec 60: HTTPS is terminated upstream (load balancer / reverse proxy)
   // in production; helmet covers the remaining baseline HTTP security headers.
   app.use(helmet());
-  app.use(cors());
+  app.use(cors({ origin: env.frontendUrl ?? true }));
   app.use(express.json());
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));

@@ -13,4 +13,5 @@ export const env = {
   port: Number(process.env.PORT ?? 4000),
   jwtSecret: required("JWT_SECRET", "dev-secret-do-not-use-in-production"),
   databaseUrl: required("DATABASE_URL"),
+  frontendUrl: process.env.FRONTEND_URL,
 };
