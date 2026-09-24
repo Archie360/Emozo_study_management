@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Native date inputs render their empty dd/mm/yyyy hint at a very low,
+   browser-controlled opacity that Tailwind's placeholder: variant can't
+   reach (it targets ::placeholder, which date inputs don't use). */
+input[type="date"]:placeholder-shown,
+input[type="time"]:placeholder-shown,
+input[type="datetime-local"]:placeholder-shown {
+  color: #6b7280;
+}

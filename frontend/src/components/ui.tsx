@@ -65,7 +65,7 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500";
+  "w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-500 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500";
 
 export function ProgressBar({ percent }: { percent: number }) {
   return (
