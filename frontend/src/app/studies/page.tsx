@@ -40,9 +40,17 @@ export default function StudiesListPage() {
     <AuthGate>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Studies</h1>
-        <Link href="/studies/new" className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">
-          Create Study
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/study-types"
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Study Types
+          </Link>
+          <Link href="/studies/new" className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">
+            Create Study
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

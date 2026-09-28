@@ -4,12 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 
-// Spec 63: Dashboard / Studies / Create Study / Study Types / Administration.
+// Spec 63: Dashboard / Studies / Administration. Create Study and Study
+// Types live inside the Studies page rather than the top nav.
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/studies", label: "Studies" },
-  { href: "/studies/new", label: "Create Study" },
-  { href: "/study-types", label: "Study Types" },
 ];
 
 export function NavBar() {
