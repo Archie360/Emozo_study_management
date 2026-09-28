@@ -10,28 +10,40 @@ export interface TaskStatusSummary {
   notStarted: number;
   inProgress: number;
   complete: number;
+  notApplicable: number;
+}
+
+// NOT_APPLICABLE tasks are excluded from progress/stage/completion math
+// entirely (they're not part of the work being tracked) but still counted
+// separately so the UI can show they exist.
+function applicable(tasks: Task[]): Task[] {
+  return tasks.filter((t) => t.status !== TaskStatus.NOT_APPLICABLE);
 }
 
 export function taskStatusSummary(tasks: Task[]): TaskStatusSummary {
+  const relevant = applicable(tasks);
   return {
-    total: tasks.length,
-    notStarted: tasks.filter((t) => t.status === TaskStatus.NOT_STARTED).length,
-    inProgress: tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS).length,
-    complete: tasks.filter((t) => t.status === TaskStatus.COMPLETE).length,
+    total: relevant.length,
+    notStarted: relevant.filter((t) => t.status === TaskStatus.NOT_STARTED).length,
+    inProgress: relevant.filter((t) => t.status === TaskStatus.IN_PROGRESS).length,
+    complete: relevant.filter((t) => t.status === TaskStatus.COMPLETE).length,
+    notApplicable: tasks.length - relevant.length,
   };
 }
 
 // Spec 24: Progress % = Complete Tasks / Total Tasks x 100. Zero tasks => 0%.
 export function studyProgressPercent(tasks: Task[]): number {
-  if (tasks.length === 0) return 0;
-  const complete = tasks.filter((t) => t.status === TaskStatus.COMPLETE).length;
-  return Math.round((complete / tasks.length) * 100);
+  const relevant = applicable(tasks);
+  if (relevant.length === 0) return 0;
+  const complete = relevant.filter((t) => t.status === TaskStatus.COMPLETE).length;
+  return Math.round((complete / relevant.length) * 100);
 }
 
 // Spec 26: first non-complete task by sequence, or "Complete" if all done.
 export function currentStudyStage(tasks: Task[]): string {
-  if (tasks.length === 0) return "No Tasks";
-  const sorted = [...tasks].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+  const relevant = applicable(tasks);
+  if (relevant.length === 0) return "No Tasks";
+  const sorted = [...relevant].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
   const current = sorted.find((t) => t.status !== TaskStatus.COMPLETE);
   return current ? current.taskName : "Complete";
 }
@@ -42,9 +54,10 @@ export function currentStudyStage(tasks: Task[]): string {
  * approach (spec 21) is to use the final task completion date.
  */
 export function expectedCompletionDate(tasks: Task[]): Date | null {
-  if (tasks.length === 0) return null;
+  const relevant = applicable(tasks);
+  if (relevant.length === 0) return null;
 
-  const incomplete = tasks.filter((t) => t.status !== TaskStatus.COMPLETE);
+  const incomplete = relevant.filter((t) => t.status !== TaskStatus.COMPLETE);
   if (incomplete.length > 0) {
     return incomplete.reduce(
       (latest, t) => (t.currentEndDate > latest ? t.currentEndDate : latest),
@@ -52,7 +65,7 @@ export function expectedCompletionDate(tasks: Task[]): Date | null {
     );
   }
 
-  const completions = tasks
+  const completions = relevant
     .map((t) => t.completedAt)
     .filter((d): d is Date => d !== null);
   if (completions.length > 0) {
@@ -60,9 +73,9 @@ export function expectedCompletionDate(tasks: Task[]): Date | null {
   }
 
   // Fallback: no completedAt recorded, use latest current end date.
-  return tasks.reduce(
+  return relevant.reduce(
     (latest, t) => (t.currentEndDate > latest ? t.currentEndDate : latest),
-    tasks[0].currentEndDate
+    relevant[0].currentEndDate
   );
 }
 

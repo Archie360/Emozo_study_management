@@ -8,6 +8,7 @@ interface TaskInput {
   description?: string;
   sequenceNumber: number;
   defaultDurationDays?: number;
+  isFixed?: boolean;
 }
 
 async function assertNameUniqueAmongActive(name: string, excludeId?: string) {
@@ -242,6 +243,7 @@ interface AddTaskInput {
   description?: string;
   sequenceNumber?: number;
   defaultDurationDays?: number;
+  isFixed?: boolean;
 }
 
 // Spec 35: "Add TASK" on the Study Type Edit Screen. New tasks append to
@@ -263,6 +265,7 @@ export async function addStudyTypeTask(studyTypeId: string, input: AddTaskInput,
         description: input.description,
         sequenceNumber,
         defaultDurationDays: input.defaultDurationDays,
+        isFixed: input.isFixed ?? false,
       },
     });
 
@@ -286,7 +289,7 @@ export async function addStudyTypeTask(studyTypeId: string, input: AddTaskInput,
 export async function updateStudyTypeTask(
   studyTypeId: string,
   taskId: string,
-  input: { taskName?: string; description?: string; defaultDurationDays?: number },
+  input: { taskName?: string; description?: string; defaultDurationDays?: number; isFixed?: boolean },
   userId: string
 ) {
   const studyType = await getStudyType(studyTypeId);
@@ -303,6 +306,7 @@ export async function updateStudyTypeTask(
         taskName: input.taskName,
         description: input.description,
         defaultDurationDays: input.defaultDurationDays,
+        isFixed: input.isFixed,
       },
     });
 

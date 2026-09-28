@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { NotFoundError } from "../../utils/errors";
+import { USER_SUMMARY_SELECT } from "../users/users.service";
 
 async function assertTaskExists(taskId: string) {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
@@ -12,7 +13,7 @@ export async function getTaskDateHistory(taskId: string) {
   return prisma.taskDateHistory.findMany({
     where: { taskId },
     orderBy: { versionNumber: "desc" },
-    include: { changer: true },
+    include: { changer: { select: USER_SUMMARY_SELECT } },
   });
 }
 
@@ -22,6 +23,6 @@ export async function getTaskStatusHistory(taskId: string) {
   return prisma.taskStatusHistory.findMany({
     where: { taskId },
     orderBy: { changedAt: "desc" },
-    include: { changer: true },
+    include: { changer: { select: USER_SUMMARY_SELECT } },
   });
 }

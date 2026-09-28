@@ -30,6 +30,7 @@ export default function NewStudyTypePage() {
           description: t.description || undefined,
           sequenceNumber: i + 1,
           defaultDurationDays: t.defaultDurationDays ? Number(t.defaultDurationDays) : undefined,
+          isFixed: t.isFixed,
         })),
       });
       router.push(`/study-types/${studyType.id}`);

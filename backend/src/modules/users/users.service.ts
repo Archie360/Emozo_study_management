@@ -13,6 +13,18 @@ function sanitizeUser<T extends User>(user: T): Omit<T, "passwordHash"> {
   return rest;
 }
 
+// For any OTHER module that includes a User relation (Study.owner,
+// TaskDateHistory.changer, ...): select this instead of `{ <relation>: true }`,
+// which would otherwise pull passwordHash into the response.
+export const USER_SUMMARY_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 export async function listUsers() {
   const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
   return users.map(sanitizeUser);

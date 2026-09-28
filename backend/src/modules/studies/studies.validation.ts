@@ -9,44 +9,41 @@ const inlineTaskSchema = z.object({
   startDate: dateString,
   endDate: dateString,
   sequenceNumber: z.number().int().positive(),
+  isFixed: z.boolean().optional(),
 });
 
-// Spec 11: Stage 1 minimum required fields, plus the task-creation method
-// the user picked ("How would you like to create the Study Tasks?").
+// A Study is defined first (status PROPOSED) with just its info fields —
+// no tasks yet. Tasks only get created later, on confirmStudySoldSchema.
 export const createStudySchema = z
   .object({
     studyName: z.string().trim().min(1, "Study Name is required."),
+    studyTypeId: z.string().uuid("Project Type is required."),
     ownerUserId: z.string().uuid("Owner is required."),
+    emozoPocUserId: z.string().uuid().optional(),
     description: z.string().optional(),
+    clientName: z.string().optional(),
+    clientLocation: z.string().optional(),
+    sponsorInfo: z.string().optional(),
     clientBusinessUnit: z.string().optional(),
     priority: z.nativeEnum(Priority).optional(),
-    status: z.nativeEnum(StudyStatus).default(StudyStatus.DRAFT),
     originalStartDate: dateString,
     originalCompletionDate: dateString,
-    taskCreationMethod: z.enum(["STUDY_TYPE_AS_IS", "MODIFIED_TEMPLATE", "FROM_SCRATCH"]),
-    studyTypeId: z.string().uuid().optional(),
-    // Required for MODIFIED_TEMPLATE / FROM_SCRATCH; ignored for STUDY_TYPE_AS_IS,
-    // whose tasks are copied server-side from the referenced Study Type (spec 12).
-    tasks: z.array(inlineTaskSchema).optional(),
+    likelyTotalRevenue: z.number().nonnegative().optional(),
+    estimatedTotalExpenses: z.number().nonnegative().optional(),
   })
   .refine((data) => data.originalCompletionDate >= data.originalStartDate, {
     message: "Original Completion Date cannot be earlier than Original Start Date.",
     path: ["originalCompletionDate"],
-  })
-  .refine((data) => data.taskCreationMethod === "STUDY_TYPE_AS_IS" ? !!data.studyTypeId : true, {
-    message: "A Study Type must be selected for this task creation method.",
-    path: ["studyTypeId"],
-  })
-  .refine(
-    (data) =>
-      data.taskCreationMethod === "FROM_SCRATCH" ? !!data.tasks && data.tasks.length > 0 : true,
-    { message: "At least one task is required.", path: ["tasks"] }
-  );
+  });
 
 export const updateStudySchema = z.object({
   studyName: z.string().trim().min(1).optional(),
   ownerUserId: z.string().uuid().optional(),
+  emozoPocUserId: z.string().uuid().optional(),
   description: z.string().optional(),
+  clientName: z.string().optional(),
+  clientLocation: z.string().optional(),
+  sponsorInfo: z.string().optional(),
   clientBusinessUnit: z.string().optional(),
   priority: z.nativeEnum(Priority).optional(),
   version: z.number().int(),
@@ -54,6 +51,27 @@ export const updateStudySchema = z.object({
 
 export const changeStudyStatusSchema = z.object({
   status: z.nativeEnum(StudyStatus),
+  version: z.number().int(),
+});
+
+// Confirming a Study as sold: instantiate the rest of its tasks from the
+// chosen template (or build them from scratch), and flip PROPOSED -> CONFIRMED_SOLD.
+export const confirmStudySoldSchema = z
+  .object({
+    taskCreationMethod: z.enum(["STUDY_TYPE_AS_IS", "MODIFIED_TEMPLATE", "FROM_SCRATCH"]),
+    studyTypeId: z.string().uuid().optional(),
+    tasks: z.array(inlineTaskSchema).optional(),
+    version: z.number().int(),
+  })
+  .refine(
+    (data) =>
+      data.taskCreationMethod === "FROM_SCRATCH" ? !!data.tasks && data.tasks.length > 0 : true,
+    { message: "At least one task is required.", path: ["tasks"] }
+  );
+
+export const updateStudyEstimatesSchema = z.object({
+  likelyTotalRevenue: z.number().nonnegative().optional(),
+  estimatedTotalExpenses: z.number().nonnegative().optional(),
   version: z.number().int(),
 });
 

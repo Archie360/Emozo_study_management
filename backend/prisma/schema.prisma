@@ -17,9 +17,11 @@ enum UserRole {
   ADMIN
 }
 
+// PROPOSED: a Study has been defined but has no tasks yet. CONFIRMED_SOLD:
+// contract inked — the Study Type's task template has been instantiated.
 enum StudyStatus {
-  DRAFT
-  ACTIVE
+  PROPOSED
+  CONFIRMED_SOLD
   COMPLETE
   CANCELLED
 }
@@ -33,6 +35,7 @@ enum TaskStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETE
+  NOT_APPLICABLE
 }
 
 enum Priority {
@@ -53,6 +56,7 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   ownedStudies         Study[]             @relation("StudyOwner")
+  pocStudies           Study[]             @relation("StudyPoc")
   createdStudies       Study[]             @relation("StudyCreatedBy")
   createdStudyTypes    StudyType[]
   createdTasks         Task[]              @relation("TaskCreatedBy")
@@ -93,6 +97,9 @@ model StudyTypeTask {
   description         String?
   sequenceNumber      Int       @map("sequence_number")
   defaultDurationDays Int?      @map("default_duration_days")
+  // Fixed tasks (e.g. contracts, payments) can never be marked NOT_APPLICABLE
+  // on a Study instantiated from this template.
+  isFixed             Boolean   @default(false) @map("is_fixed")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
@@ -110,13 +117,33 @@ model Study {
   description                   String?
   ownerUserId                   String      @map("owner_user_id")
   owner                         User        @relation("StudyOwner", fields: [ownerUserId], references: [id])
+  // Emozo's internal point of contact for this deal — distinct from Owner,
+  // who runs the tasks day to day.
+  emozoPocUserId                String?     @map("emozo_poc_user_id")
+  emozoPoc                      User?       @relation("StudyPoc", fields: [emozoPocUserId], references: [id])
   clientBusinessUnit            String?     @map("client_business_unit")
+  clientName                    String?     @map("client_name")
+  clientLocation                String?     @map("client_location")
+  sponsorInfo                   String?     @map("sponsor_info")
   priority                      Priority?
   originalStartDate             DateTime?   @map("original_start_date") @db.Date
+  previousOriginalStartDate     DateTime?   @map("previous_original_start_date") @db.Date
+  originalStartDateChangeCount  Int         @default(0) @map("original_start_date_change_count")
   originalCompletionDate        DateTime?   @map("original_completion_date") @db.Date
+  previousOriginalCompletionDate      DateTime? @map("previous_original_completion_date") @db.Date
+  originalCompletionDateChangeCount   Int    @default(0) @map("original_completion_date_change_count")
+  // Likely total revenue / estimated total expenses: current + previous
+  // value and a change counter, same "latest / last / how many times
+  // changed" treatment as everything else that gets re-estimated over time.
+  likelyTotalRevenue            Decimal?    @map("likely_total_revenue") @db.Decimal(14, 2)
+  previousTotalRevenue          Decimal?    @map("previous_total_revenue") @db.Decimal(14, 2)
+  totalRevenueChangeCount       Int         @default(0) @map("total_revenue_change_count")
+  estimatedTotalExpenses        Decimal?    @map("estimated_total_expenses") @db.Decimal(14, 2)
+  previousTotalExpenses         Decimal?    @map("previous_total_expenses") @db.Decimal(14, 2)
+  totalExpensesChangeCount      Int         @default(0) @map("total_expenses_change_count")
   // Calculated field, persisted for query performance (spec 21, 58)
   currentExpectedCompletionDate DateTime?   @map("current_expected_completion_date") @db.Date
-  status                        StudyStatus @default(DRAFT)
+  status                        StudyStatus @default(PROPOSED)
   createdBy                     String      @map("created_by")
   creator                       User        @relation("StudyCreatedBy", fields: [createdBy], references: [id])
   createdAt                     DateTime    @default(now()) @map("created_at")
@@ -148,6 +175,8 @@ model Task {
   currentStartDate      DateTime   @map("current_start_date") @db.Date
   currentEndDate        DateTime   @map("current_end_date") @db.Date
   status                TaskStatus @default(NOT_STARTED)
+  // Fixed tasks (e.g. contracts, payments) can never be marked NOT_APPLICABLE.
+  isFixed               Boolean    @default(false) @map("is_fixed")
   dateChangeCount       Int        @default(0) @map("date_change_count")
   createdBy             String     @map("created_by")
   creator               User       @relation("TaskCreatedBy", fields: [createdBy], references: [id])

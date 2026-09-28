@@ -17,3 +17,10 @@ export function formatScheduleVariance(days: number | null): string {
   if (days > 0) return `${days} day${days === 1 ? "" : "s"} late`;
   return `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ahead`;
 }
+
+export function formatCurrency(value: string | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  const n = Number(value);
+  if (Number.isNaN(n)) return "—";
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}

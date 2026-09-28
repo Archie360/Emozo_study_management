@@ -10,11 +10,18 @@ import { formatDate } from "@/lib/format";
 import { StudyStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Card, ErrorBanner, inputClass, ProgressBar } from "@/components/ui";
 
-// Spec 30: STUDY List Screen — status filter (default ACTIVE), search.
-const STATUS_TABS: (StudyStatus | "ALL")[] = ["ACTIVE", "DRAFT", "COMPLETE", "CANCELLED", "ALL"];
+// Spec 30: STUDY List Screen — status filter (default CONFIRMED_SOLD), search.
+const STATUS_TABS: (StudyStatus | "ALL")[] = ["CONFIRMED_SOLD", "PROPOSED", "COMPLETE", "CANCELLED", "ALL"];
+const STATUS_LABELS: Record<StudyStatus | "ALL", string> = {
+  ALL: "All",
+  PROPOSED: "Proposed",
+  CONFIRMED_SOLD: "Confirmed-Sold",
+  COMPLETE: "Complete",
+  CANCELLED: "Cancelled",
+};
 
 export default function StudiesListPage() {
-  const [status, setStatus] = useState<StudyStatus | "ALL">("ACTIVE");
+  const [status, setStatus] = useState<StudyStatus | "ALL">("CONFIRMED_SOLD");
   const [search, setSearch] = useState("");
 
   const { data, loading, error } = useApi<Paginated<Study>>(
@@ -48,7 +55,7 @@ export default function StudiesListPage() {
                 status === tab ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100"
               }`}
             >
-              {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+              {STATUS_LABELS[tab]}
             </button>
           ))}
         </div>

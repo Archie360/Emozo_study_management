@@ -7,6 +7,7 @@ export interface EditableStudyTypeTask {
   taskName: string;
   description: string;
   defaultDurationDays: string;
+  isFixed: boolean;
 }
 
 // Spec 6: template tasks carry a default duration, not absolute dates —
@@ -37,7 +38,7 @@ export function StudyTypeTaskEditor({
   function addTask() {
     onChange([
       ...tasks,
-      { tempId: crypto.randomUUID(), taskName: "", description: "", defaultDurationDays: "1" },
+      { tempId: crypto.randomUUID(), taskName: "", description: "", defaultDurationDays: "1", isFixed: false },
     ]);
   }
 
@@ -85,6 +86,14 @@ export function StudyTypeTaskEditor({
               onChange={(e) => update(task.tempId, { defaultDurationDays: e.target.value })}
             />
           </div>
+          <label className="flex items-center gap-1 pt-1.5 text-xs text-gray-500" title="Cannot be marked Not Applicable">
+            <input
+              type="checkbox"
+              checked={task.isFixed}
+              onChange={(e) => update(task.tempId, { isFixed: e.target.checked })}
+            />
+            Fixed
+          </label>
           <button
             type="button"
             onClick={() => remove(task.tempId)}

@@ -158,6 +158,7 @@ function TaskRow({
   const [taskName, setTaskName] = useState(task.taskName);
   const [description, setDescription] = useState(task.description ?? "");
   const [duration, setDuration] = useState(String(task.defaultDurationDays ?? 1));
+  const [isFixed, setIsFixed] = useState(task.isFixed);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -169,6 +170,7 @@ function TaskRow({
         taskName,
         description,
         defaultDurationDays: duration ? Number(duration) : undefined,
+        isFixed,
       });
       setEditing(false);
       onSaved("Task updated.");
@@ -226,9 +228,9 @@ function TaskRow({
         )}
         {editing ? (
           <div className="grid flex-1 grid-cols-12 gap-2">
-            <input className={`${inputClass} col-span-5`} value={taskName} onChange={(e) => setTaskName(e.target.value)} />
+            <input className={`${inputClass} col-span-4`} value={taskName} onChange={(e) => setTaskName(e.target.value)} />
             <input
-              className={`${inputClass} col-span-5`}
+              className={`${inputClass} col-span-4`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
@@ -240,6 +242,10 @@ function TaskRow({
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
             />
+            <label className="col-span-2 flex items-center gap-1 text-xs text-gray-500" title="Cannot be marked Not Applicable">
+              <input type="checkbox" checked={isFixed} onChange={(e) => setIsFixed(e.target.checked)} />
+              Fixed
+            </label>
           </div>
         ) : (
           <div className="flex-1 text-sm">
@@ -248,6 +254,7 @@ function TaskRow({
             </span>
             {task.description && <span className="ml-2 text-gray-400">{task.description}</span>}
             <span className="ml-2 text-gray-400">· {task.defaultDurationDays ?? 1} day(s)</span>
+            {task.isFixed && <span className="ml-2 text-gray-400">· Fixed</span>}
           </div>
         )}
         {!disabled && (
@@ -282,6 +289,7 @@ function AddTaskForm({ studyTypeId, onSaved }: { studyTypeId: string; onSaved: (
   const [taskName, setTaskName] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("1");
+  const [isFixed, setIsFixed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -293,10 +301,12 @@ function AddTaskForm({ studyTypeId, onSaved }: { studyTypeId: string; onSaved: (
         taskName,
         description: description || undefined,
         defaultDurationDays: duration ? Number(duration) : undefined,
+        isFixed,
       });
       setTaskName("");
       setDescription("");
       setDuration("1");
+      setIsFixed(false);
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to add task.");
@@ -328,8 +338,12 @@ function AddTaskForm({ studyTypeId, onSaved }: { studyTypeId: string; onSaved: (
           value={duration}
           onChange={(e) => setDuration(e.target.value)}
         />
-        <Button className="col-span-2" onClick={add} disabled={submitting || !taskName}>
-          + Add Task
+        <label className="col-span-1 flex items-center justify-center gap-1 text-xs text-gray-500" title="Cannot be marked Not Applicable">
+          <input type="checkbox" checked={isFixed} onChange={(e) => setIsFixed(e.target.checked)} />
+          Fixed
+        </label>
+        <Button className="col-span-1" onClick={add} disabled={submitting || !taskName}>
+          + Add
         </Button>
       </div>
     </div>

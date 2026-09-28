@@ -169,11 +169,13 @@ export async function updateTask(id: string, input: UpdateTaskInput, userId: str
 
 // Spec 18: valid TASK status transitions, including the explicitly permitted
 // backwards ones. A direct COMPLETE -> NOT_STARTED jump is not listed, so it
-// is rejected — callers should route through IN_PROGRESS.
+// is rejected — callers should route through IN_PROGRESS. NOT_APPLICABLE is
+// reachable from either not-yet-done state and reversible back to NOT_STARTED.
 const VALID_TASK_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
-  NOT_STARTED: [TaskStatus.IN_PROGRESS, TaskStatus.COMPLETE],
-  IN_PROGRESS: [TaskStatus.COMPLETE, TaskStatus.NOT_STARTED],
+  NOT_STARTED: [TaskStatus.IN_PROGRESS, TaskStatus.COMPLETE, TaskStatus.NOT_APPLICABLE],
+  IN_PROGRESS: [TaskStatus.COMPLETE, TaskStatus.NOT_STARTED, TaskStatus.NOT_APPLICABLE],
   COMPLETE: [TaskStatus.IN_PROGRESS],
+  NOT_APPLICABLE: [TaskStatus.NOT_STARTED],
 };
 
 export async function changeTaskStatus(
@@ -194,6 +196,10 @@ export async function changeTaskStatus(
     throw new ValidationError(
       `Cannot change Task status from ${existing.status} to ${input.status}.`
     );
+  }
+
+  if (input.status === TaskStatus.NOT_APPLICABLE && existing.isFixed) {
+    throw new ValidationError("This task is fixed and cannot be marked Not Applicable.");
   }
 
   return prisma.$transaction(async (tx) => {

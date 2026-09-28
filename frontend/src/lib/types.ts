@@ -1,10 +1,11 @@
 // Mirrors the backend's Prisma models / API responses (see ../../../backend/prisma/schema.prisma).
 
 export type UserRole = "STANDARD" | "ADMIN";
-export type StudyStatus = "DRAFT" | "ACTIVE" | "COMPLETE" | "CANCELLED";
+export type StudyStatus = "PROPOSED" | "CONFIRMED_SOLD" | "COMPLETE" | "CANCELLED";
 export type StudyTypeStatus = "ACTIVE" | "ARCHIVED";
-export type TaskStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETE";
+export type TaskStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETE" | "NOT_APPLICABLE";
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
+export type TaskCreationMethod = "STUDY_TYPE_AS_IS" | "MODIFIED_TEMPLATE" | "FROM_SCRATCH";
 
 export interface User {
   id: string;
@@ -32,6 +33,7 @@ export interface StudyTypeTask {
   description: string | null;
   sequenceNumber: number;
   defaultDurationDays: number | null;
+  isFixed: boolean;
 }
 
 export interface Task {
@@ -43,6 +45,7 @@ export interface Task {
   currentStartDate: string;
   currentEndDate: string;
   status: TaskStatus;
+  isFixed: boolean;
   dateChangeCount: number;
   completedAt: string | null;
   version: number;
@@ -79,6 +82,7 @@ export interface StudyMetrics {
     notStarted: number;
     inProgress: number;
     complete: number;
+    notApplicable: number;
   };
   scheduleVarianceDays: number | null;
   allTasksComplete: boolean;
@@ -92,10 +96,25 @@ export interface Study {
   description: string | null;
   ownerUserId: string;
   owner: User;
+  emozoPocUserId: string | null;
+  emozoPoc: User | null;
   clientBusinessUnit: string | null;
+  clientName: string | null;
+  clientLocation: string | null;
+  sponsorInfo: string | null;
   priority: Priority | null;
   originalStartDate: string | null;
+  previousOriginalStartDate: string | null;
+  originalStartDateChangeCount: number;
   originalCompletionDate: string | null;
+  previousOriginalCompletionDate: string | null;
+  originalCompletionDateChangeCount: number;
+  likelyTotalRevenue: string | null;
+  previousTotalRevenue: string | null;
+  totalRevenueChangeCount: number;
+  estimatedTotalExpenses: string | null;
+  previousTotalExpenses: string | null;
+  totalExpensesChangeCount: number;
   currentExpectedCompletionDate: string | null;
   status: StudyStatus;
   version: number;

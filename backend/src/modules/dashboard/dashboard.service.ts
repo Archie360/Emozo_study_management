@@ -2,9 +2,13 @@ import { Priority, StudyStatus } from "@prisma/client";
 import { listStudies, StudyListFilters } from "../studies/studies.service";
 
 // Spec 45: GET /api/v1/reports/active-studies — shape matches the fields
-// the spec lists explicitly for the reporting endpoint.
+// the spec lists explicitly for the reporting endpoint. "Active" here means
+// CONFIRMED_SOLD: work is underway (PROPOSED studies have no tasks yet).
 export async function getActiveStudiesReport(filters: Omit<StudyListFilters, "status">) {
-  const { items, total, page, pageSize } = await listStudies({ ...filters, status: StudyStatus.ACTIVE });
+  const { items, total, page, pageSize } = await listStudies({
+    ...filters,
+    status: StudyStatus.CONFIRMED_SOLD,
+  });
 
   return {
     total,

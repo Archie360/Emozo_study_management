@@ -3,8 +3,8 @@ import { StudyStatus, TaskStatus, Priority } from "@/lib/types";
 // Spec 59: status is never communicated through colour alone — every badge
 // carries its own text label, colour is a secondary cue only.
 const STUDY_STATUS_STYLES: Record<StudyStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-700 ring-gray-300",
-  ACTIVE: "bg-blue-50 text-blue-700 ring-blue-300",
+  PROPOSED: "bg-gray-100 text-gray-700 ring-gray-300",
+  CONFIRMED_SOLD: "bg-blue-50 text-blue-700 ring-blue-300",
   COMPLETE: "bg-green-50 text-green-700 ring-green-300",
   CANCELLED: "bg-red-50 text-red-700 ring-red-300",
 };
@@ -13,6 +13,7 @@ const TASK_STATUS_STYLES: Record<TaskStatus, string> = {
   NOT_STARTED: "bg-gray-100 text-gray-700 ring-gray-300",
   IN_PROGRESS: "bg-amber-50 text-amber-700 ring-amber-300",
   COMPLETE: "bg-green-50 text-green-700 ring-green-300",
+  NOT_APPLICABLE: "bg-gray-50 text-gray-400 ring-gray-200",
 };
 
 const PRIORITY_STYLES: Record<Priority, string> = {

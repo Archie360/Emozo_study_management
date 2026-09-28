@@ -5,18 +5,22 @@ import { parseOrThrow } from "../../utils/validate";
 import { requireRole } from "../../middleware/authorize";
 import {
   changeStudyStatus,
+  confirmStudySold,
   createStudy,
   getStudy,
   listStudies,
   rebaselineStudy,
   saveStudyAsStudyType,
   updateStudy,
+  updateStudyEstimates,
 } from "./studies.service";
 import {
   changeStudyStatusSchema,
+  confirmStudySoldSchema,
   createStudySchema,
   createStudyTypeFromStudySchema,
   studyListQuerySchema,
+  updateStudyEstimatesSchema,
   updateStudySchema,
 } from "./studies.validation";
 import { z } from "zod";
@@ -51,7 +55,7 @@ studiesRouter.get(
   })
 );
 
-// Spec 11-15, 40: two-stage Create Study flow, submitted as one call.
+// Define a Study (status PROPOSED) — info fields only, no tasks yet.
 studiesRouter.post(
   "/studies",
   asyncHandler(async (req, res) => {
@@ -75,6 +79,24 @@ studiesRouter.post(
   asyncHandler(async (req, res) => {
     const input = parseOrThrow(changeStudyStatusSchema, req.body);
     res.json(await changeStudyStatus(req.params.id, input, req.user!.id));
+  })
+);
+
+// PROPOSED -> CONFIRMED_SOLD: instantiate the rest of the Study's tasks from
+// the chosen template.
+studiesRouter.post(
+  "/studies/:id/confirm-sold",
+  asyncHandler(async (req, res) => {
+    const input = parseOrThrow(confirmStudySoldSchema, req.body);
+    res.json(await confirmStudySold(req.params.id, input, req.user!.id));
+  })
+);
+
+studiesRouter.post(
+  "/studies/:id/estimates",
+  asyncHandler(async (req, res) => {
+    const input = parseOrThrow(updateStudyEstimatesSchema, req.body);
+    res.json(await updateStudyEstimates(req.params.id, input, req.user!.id));
   })
 );
 
