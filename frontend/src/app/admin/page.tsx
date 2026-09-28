@@ -8,7 +8,13 @@ import { useAuth } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { User, UserRole } from "@/lib/types";
-import { Button, Card, ErrorBanner, Field, inputClass, SuccessToast } from "@/components/ui";
+import { Button, Card, ErrorBanner, Field, inputClass, Modal, SuccessToast } from "@/components/ui";
+
+type RowModal =
+  | { type: "none" }
+  | { type: "edit"; targetUser: User }
+  | { type: "password"; targetUser: User }
+  | { type: "delete"; targetUser: User };
 
 // Spec 3.2: Administrator can manage users and application-level configuration.
 export default function AdminPage() {
@@ -16,6 +22,7 @@ export default function AdminPage() {
   const router = useRouter();
   const { data: users, loading, error, reload } = useApi<User[]>(() => api.get("/users"), []);
   const [toast, setToast] = useState<string | null>(null);
+  const [modal, setModal] = useState<RowModal>({ type: "none" });
 
   useEffect(() => {
     if (user && user.role !== "ADMIN") router.replace("/dashboard");
@@ -24,6 +31,7 @@ export default function AdminPage() {
   if (user && user.role !== "ADMIN") return null;
 
   function notify(message: string) {
+    setModal({ type: "none" });
     reload();
     setToast(message);
     setTimeout(() => setToast(null), 3000);
@@ -55,28 +63,55 @@ export default function AdminPage() {
               </tr>
             )}
             {users?.map((u) => (
-              <RoleRow key={u.id} targetUser={u} onSaved={() => notify("Role updated.")} />
+              <UserRow
+                key={u.id}
+                targetUser={u}
+                currentUserId={user?.id}
+                onRoleSaved={() => notify("Role updated.")}
+                onAction={(type) => setModal({ type, targetUser: u })}
+              />
             ))}
           </tbody>
         </table>
       </Card>
 
       <CreateUserForm onCreated={() => notify("User created.")} />
+
+      {modal.type === "edit" && (
+        <EditUserModal targetUser={modal.targetUser} onClose={() => setModal({ type: "none" })} onSaved={() => notify("User updated.")} />
+      )}
+      {modal.type === "password" && (
+        <ResetPasswordModal targetUser={modal.targetUser} onClose={() => setModal({ type: "none" })} onSaved={() => notify("Password reset.")} />
+      )}
+      {modal.type === "delete" && (
+        <DeleteUserModal targetUser={modal.targetUser} onClose={() => setModal({ type: "none" })} onSaved={() => notify("User deleted.")} />
+      )}
     </AuthGate>
   );
 }
 
-function RoleRow({ targetUser, onSaved }: { targetUser: User; onSaved: () => void }) {
+function UserRow({
+  targetUser,
+  currentUserId,
+  onRoleSaved,
+  onAction,
+}: {
+  targetUser: User;
+  currentUserId: string | undefined;
+  onRoleSaved: () => void;
+  onAction: (type: "edit" | "password" | "delete") => void;
+}) {
   const [role, setRole] = useState<UserRole>(targetUser.role);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const isSelf = targetUser.id === currentUserId;
 
-  async function save() {
+  async function saveRole() {
     setSubmitting(true);
     setError(null);
     try {
       await api.patch(`/users/${targetUser.id}/role`, { role });
-      onSaved();
+      onRoleSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to update role.");
     } finally {
@@ -99,14 +134,184 @@ function RoleRow({ targetUser, onSaved }: { targetUser: User; onSaved: () => voi
         </select>
       </td>
       <td className="px-4 py-3">
-        {role !== targetUser.role && (
-          <Button className="!px-2 !py-0.5 text-xs" onClick={save} disabled={submitting}>
-            {submitting ? "Saving…" : "Save"}
-          </Button>
-        )}
-        {error && <span className="ml-2 text-xs text-red-600">{error}</span>}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {role !== targetUser.role && (
+            <Button className="!px-2 !py-0.5 text-xs" onClick={saveRole} disabled={submitting}>
+              {submitting ? "Saving…" : "Save Role"}
+            </Button>
+          )}
+          <button className="text-gray-600 hover:underline" onClick={() => onAction("edit")}>
+            Edit
+          </button>
+          <button className="text-gray-600 hover:underline" onClick={() => onAction("password")}>
+            Reset Password
+          </button>
+          {!isSelf && (
+            <button className="text-red-500 hover:underline" onClick={() => onAction("delete")}>
+              Delete
+            </button>
+          )}
+          {error && <span className="text-red-600">{error}</span>}
+        </div>
       </td>
     </tr>
+  );
+}
+
+function EditUserModal({
+  targetUser,
+  onClose,
+  onSaved,
+}: {
+  targetUser: User;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(targetUser.name);
+  const [email, setEmail] = useState(targetUser.email);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  async function save() {
+    setSubmitting(true);
+    setError(null);
+    setFieldErrors({});
+    try {
+      await api.patch(`/users/${targetUser.id}`, { name, email });
+      onSaved();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+        setFieldErrors(err.fields ?? {});
+      } else {
+        setError("Failed to save.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open title="Edit User" onClose={onClose}>
+      <ErrorBanner message={error} />
+      <div className="space-y-4">
+        <Field label="Name" error={fieldErrors.name}>
+          <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
+        <Field label="Email" error={fieldErrors.email}>
+          <input type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Field>
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={save} disabled={submitting || !name || !email}>
+          {submitting ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+function ResetPasswordModal({
+  targetUser,
+  onClose,
+  onSaved,
+}: {
+  targetUser: User;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  async function save() {
+    setSubmitting(true);
+    setError(null);
+    setFieldErrors({});
+    try {
+      await api.post(`/users/${targetUser.id}/password`, { password });
+      onSaved();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+        setFieldErrors(err.fields ?? {});
+      } else {
+        setError("Failed to reset password.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open title={`Reset Password — ${targetUser.name}`} onClose={onClose}>
+      <ErrorBanner message={error} />
+      <Field label="New Password" error={fieldErrors.password}>
+        <input
+          type="password"
+          className={inputClass}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="At least 8 characters"
+        />
+      </Field>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={save} disabled={submitting || !password}>
+          {submitting ? "Saving…" : "Reset Password"}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+function DeleteUserModal({
+  targetUser,
+  onClose,
+  onSaved,
+}: {
+  targetUser: User;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function confirm() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.delete(`/users/${targetUser.id}`);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to delete user.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open title="Delete User" onClose={onClose}>
+      <ErrorBanner message={error} />
+      <p className="text-sm text-gray-600">
+        Delete <strong>{targetUser.name}</strong> ({targetUser.email})? This cannot be undone.
+      </p>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="danger" onClick={confirm} disabled={submitting}>
+          {submitting ? "Deleting…" : "Delete"}
+        </Button>
+      </div>
+    </Modal>
   );
 }
 

@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { User, UserRole } from "@prisma/client";
+import { Prisma, User, UserRole } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { NotFoundError, ValidationError } from "../../utils/errors";
 
@@ -68,6 +68,56 @@ export async function updateUserRole(id: string, role: UserRole) {
   await getUser(id);
   const user = await prisma.user.update({ where: { id }, data: { role } });
   return sanitizeUser(user);
+}
+
+export async function updateUser(id: string, input: { name?: string; email?: string }) {
+  await getUser(id);
+  if (input.name !== undefined && !input.name.trim()) {
+    throw new ValidationError("Name is required.", { name: "Required" });
+  }
+  if (input.email !== undefined) {
+    if (!input.email.trim()) throw new ValidationError("Email is required.", { email: "Required" });
+    const existing = await getUserByEmail(input.email);
+    if (existing && existing.id !== id) {
+      throw new ValidationError("A user with this email already exists.", { email: "Already in use" });
+    }
+  }
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: { name: input.name, email: input.email },
+  });
+  return sanitizeUser(user);
+}
+
+export async function resetUserPassword(id: string, password: string) {
+  await getUser(id);
+  assertValidPassword(password);
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  const user = await prisma.user.update({ where: { id }, data: { passwordHash } });
+  return sanitizeUser(user);
+}
+
+// Deleting a user who owns/created studies, tasks, etc. hits foreign-key
+// constraints on those records (owner/createdBy are ON DELETE RESTRICT, by
+// design — that history shouldn't silently disappear). Surfaced as a
+// friendly validation error rather than a raw DB error.
+export async function deleteUser(id: string, requestingUserId: string) {
+  if (id === requestingUserId) {
+    throw new ValidationError("You cannot delete your own account.");
+  }
+  await getUser(id);
+
+  try {
+    await prisma.user.delete({ where: { id } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+      throw new ValidationError(
+        "This user owns or created studies, tasks, or other records and cannot be deleted. Reassign their work first."
+      );
+    }
+    throw err;
+  }
 }
 
 export async function verifyLogin(email: string, password: string) {

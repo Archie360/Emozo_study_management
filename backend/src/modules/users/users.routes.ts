@@ -3,7 +3,15 @@ import { UserRole } from "@prisma/client";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { authenticate, signToken } from "../../middleware/auth";
 import { requireAdmin } from "../../middleware/authorize";
-import { createUser, listUsers, updateUserRole, verifyLogin } from "./users.service";
+import {
+  createUser,
+  deleteUser,
+  listUsers,
+  resetUserPassword,
+  updateUser,
+  updateUserRole,
+  verifyLogin,
+} from "./users.service";
 import { NotAuthenticatedError, ValidationError } from "../../utils/errors";
 
 export const usersRouter = Router();
@@ -70,5 +78,33 @@ usersRouter.patch(
       throw new ValidationError("Invalid role.", { role: "Must be STANDARD or ADMIN" });
     }
     res.json(await updateUserRole(req.params.id, role));
+  })
+);
+
+usersRouter.patch(
+  "/users/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { name, email } = req.body as { name?: string; email?: string };
+    res.json(await updateUser(req.params.id, { name, email }));
+  })
+);
+
+usersRouter.post(
+  "/users/:id/password",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { password } = req.body as { password?: string };
+    if (!password) throw new ValidationError("Password is required.", { password: "Required" });
+    res.json(await resetUserPassword(req.params.id, password));
+  })
+);
+
+usersRouter.delete(
+  "/users/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    await deleteUser(req.params.id, req.user!.id);
+    res.status(204).send();
   })
 );
