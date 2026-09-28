@@ -6,6 +6,7 @@ const dateString = z.coerce.date();
 const inlineTaskSchema = z.object({
   taskName: z.string().trim().min(1, "Task name is required."),
   description: z.string().optional(),
+  groupName: z.string().optional(),
   startDate: dateString,
   endDate: dateString,
   sequenceNumber: z.number().int().positive(),

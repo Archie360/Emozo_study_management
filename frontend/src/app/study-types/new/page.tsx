@@ -28,6 +28,7 @@ export default function NewStudyTypePage() {
         tasks: tasks.map((t, i) => ({
           taskName: t.taskName,
           description: t.description || undefined,
+          groupName: t.groupName || undefined,
           sequenceNumber: i + 1,
           defaultDurationDays: t.defaultDurationDays ? Number(t.defaultDurationDays) : undefined,
           isFixed: t.isFixed,

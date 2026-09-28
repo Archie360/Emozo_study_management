@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
@@ -222,8 +222,16 @@ export default function StudyDetailPage() {
                 </td>
               </tr>
             )}
-            {study.tasks.map((task) => (
-              <tr key={task.id} className="hover:bg-gray-50">
+            {study.tasks.map((task, i) => (
+              <Fragment key={task.id}>
+                {task.groupName && task.groupName !== study.tasks[i - 1]?.groupName && (
+                  <tr>
+                    <td colSpan={10} className="bg-gray-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      {task.groupName}
+                    </td>
+                  </tr>
+                )}
+                <tr className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   {!task.isFixed && task.status !== "NOT_APPLICABLE" && (
                     <input
@@ -270,7 +278,8 @@ export default function StudyDetailPage() {
                     </button>
                   </div>
                 </td>
-              </tr>
+                </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -543,6 +552,7 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
           tempId: crypto.randomUUID(),
           taskName: t.taskName,
           description: t.description ?? "",
+          groupName: t.groupName ?? "",
           startDate: start.toISOString().slice(0, 10),
           endDate: end.toISOString().slice(0, 10),
         };
@@ -563,6 +573,7 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
             : tasks.map((t, i) => ({
                 taskName: t.taskName,
                 description: t.description || undefined,
+                groupName: t.groupName || undefined,
                 startDate: t.startDate,
                 endDate: t.endDate,
                 sequenceNumber: i + 1,
@@ -640,15 +651,22 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
         <div className="mt-4">
           <p className="mb-2 text-sm font-medium text-gray-700">Task list (review only)</p>
           <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
-            {selectedStudyType.tasks
-              ?.sort((a, b) => a.sequenceNumber - b.sequenceNumber)
-              .map((t) => (
-                <li key={t.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <span>
-                    {t.sequenceNumber}. {t.taskName}
-                    {t.isFixed && <span className="ml-2 text-xs text-gray-400">Fixed</span>}
-                  </span>
-                  <span className="text-gray-400">{t.defaultDurationDays ?? 1} day(s)</span>
+            {[...(selectedStudyType.tasks ?? [])]
+              .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+              .map((t, i, sorted) => (
+                <li key={t.id}>
+                  {t.groupName && t.groupName !== sorted[i - 1]?.groupName && (
+                    <div className="bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      {t.groupName}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span>
+                      {t.sequenceNumber}. {t.taskName}
+                      {t.isFixed && <span className="ml-2 text-xs text-gray-400">Fixed</span>}
+                    </span>
+                    <span className="text-gray-400">{t.defaultDurationDays ?? 1} day(s)</span>
+                  </div>
                 </li>
               ))}
           </ul>

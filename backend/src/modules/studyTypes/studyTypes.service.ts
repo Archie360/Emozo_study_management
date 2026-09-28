@@ -6,6 +6,7 @@ import { AuditAction, recordAudit } from "../audit/audit.service";
 interface TaskInput {
   taskName: string;
   description?: string;
+  groupName?: string;
   sequenceNumber: number;
   defaultDurationDays?: number;
   isFixed?: boolean;
@@ -163,8 +164,10 @@ export async function duplicateStudyType(id: string, userId: string) {
           create: source.tasks.map((t) => ({
             taskName: t.taskName,
             description: t.description,
+            groupName: t.groupName,
             sequenceNumber: t.sequenceNumber,
             defaultDurationDays: t.defaultDurationDays,
+            isFixed: t.isFixed,
           })),
         },
       },
@@ -241,6 +244,7 @@ export async function reorderStudyTypeTasks(
 interface AddTaskInput {
   taskName: string;
   description?: string;
+  groupName?: string;
   sequenceNumber?: number;
   defaultDurationDays?: number;
   isFixed?: boolean;
@@ -263,6 +267,7 @@ export async function addStudyTypeTask(studyTypeId: string, input: AddTaskInput,
         studyTypeId,
         taskName: input.taskName,
         description: input.description,
+        groupName: input.groupName,
         sequenceNumber,
         defaultDurationDays: input.defaultDurationDays,
         isFixed: input.isFixed ?? false,
@@ -289,7 +294,13 @@ export async function addStudyTypeTask(studyTypeId: string, input: AddTaskInput,
 export async function updateStudyTypeTask(
   studyTypeId: string,
   taskId: string,
-  input: { taskName?: string; description?: string; defaultDurationDays?: number; isFixed?: boolean },
+  input: {
+    taskName?: string;
+    description?: string;
+    groupName?: string;
+    defaultDurationDays?: number;
+    isFixed?: boolean;
+  },
   userId: string
 ) {
   const studyType = await getStudyType(studyTypeId);
@@ -305,6 +316,7 @@ export async function updateStudyTypeTask(
       data: {
         taskName: input.taskName,
         description: input.description,
+        groupName: input.groupName,
         defaultDurationDays: input.defaultDurationDays,
         isFixed: input.isFixed,
       },

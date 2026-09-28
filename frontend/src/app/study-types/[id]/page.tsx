@@ -59,16 +59,22 @@ export default function StudyTypeEditPage() {
           </p>
         )}
         {tasks.map((task, index) => (
-          <TaskRow
-            key={task.id}
-            studyTypeId={studyType.id}
-            task={task}
-            index={index}
-            count={tasks.length}
-            allTasks={tasks}
-            disabled={isArchived}
-            onSaved={notify}
-          />
+          <div key={task.id}>
+            {task.groupName && task.groupName !== tasks[index - 1]?.groupName && (
+              <p className="mb-1 mt-4 text-xs font-semibold uppercase tracking-wide text-gray-400 first:mt-0">
+                {task.groupName}
+              </p>
+            )}
+            <TaskRow
+              studyTypeId={studyType.id}
+              task={task}
+              index={index}
+              count={tasks.length}
+              allTasks={tasks}
+              disabled={isArchived}
+              onSaved={notify}
+            />
+          </div>
         ))}
       </div>
 
@@ -157,6 +163,7 @@ function TaskRow({
   const [editing, setEditing] = useState(false);
   const [taskName, setTaskName] = useState(task.taskName);
   const [description, setDescription] = useState(task.description ?? "");
+  const [groupName, setGroupName] = useState(task.groupName ?? "");
   const [duration, setDuration] = useState(String(task.defaultDurationDays ?? 1));
   const [isFixed, setIsFixed] = useState(task.isFixed);
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +176,7 @@ function TaskRow({
       await api.patch(`/study-types/${studyTypeId}/tasks/${task.id}`, {
         taskName,
         description,
+        groupName: groupName || undefined,
         defaultDurationDays: duration ? Number(duration) : undefined,
         isFixed,
       });
@@ -228,9 +236,15 @@ function TaskRow({
         )}
         {editing ? (
           <div className="grid flex-1 grid-cols-12 gap-2">
-            <input className={`${inputClass} col-span-4`} value={taskName} onChange={(e) => setTaskName(e.target.value)} />
             <input
-              className={`${inputClass} col-span-4`}
+              className={`${inputClass} col-span-2`}
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="Group"
+            />
+            <input className={`${inputClass} col-span-3`} value={taskName} onChange={(e) => setTaskName(e.target.value)} />
+            <input
+              className={`${inputClass} col-span-3`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
@@ -288,6 +302,7 @@ function TaskRow({
 function AddTaskForm({ studyTypeId, onSaved }: { studyTypeId: string; onSaved: () => void }) {
   const [taskName, setTaskName] = useState("");
   const [description, setDescription] = useState("");
+  const [groupName, setGroupName] = useState("");
   const [duration, setDuration] = useState("1");
   const [isFixed, setIsFixed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -300,6 +315,7 @@ function AddTaskForm({ studyTypeId, onSaved }: { studyTypeId: string; onSaved: (
       await api.post(`/study-types/${studyTypeId}/tasks`, {
         taskName,
         description: description || undefined,
+        groupName: groupName || undefined,
         defaultDurationDays: duration ? Number(duration) : undefined,
         isFixed,
       });
@@ -320,13 +336,19 @@ function AddTaskForm({ studyTypeId, onSaved }: { studyTypeId: string; onSaved: (
       <ErrorBanner message={error} />
       <div className="grid grid-cols-12 gap-2">
         <input
-          className={`${inputClass} col-span-5`}
+          className={`${inputClass} col-span-2`}
+          placeholder="Group"
+          value={groupName}
+          onChange={(e) => setGroupName(e.target.value)}
+        />
+        <input
+          className={`${inputClass} col-span-3`}
           placeholder="New task name"
           value={taskName}
           onChange={(e) => setTaskName(e.target.value)}
         />
         <input
-          className={`${inputClass} col-span-4`}
+          className={`${inputClass} col-span-3`}
           placeholder="Description (optional)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -342,7 +364,7 @@ function AddTaskForm({ studyTypeId, onSaved }: { studyTypeId: string; onSaved: (
           <input type="checkbox" checked={isFixed} onChange={(e) => setIsFixed(e.target.checked)} />
           Fixed
         </label>
-        <Button className="col-span-1" onClick={add} disabled={submitting || !taskName}>
+        <Button className="col-span-2" onClick={add} disabled={submitting || !taskName}>
           + Add
         </Button>
       </div>

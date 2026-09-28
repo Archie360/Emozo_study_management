@@ -31,6 +31,7 @@ export interface StudyTypeTask {
   studyTypeId: string;
   taskName: string;
   description: string | null;
+  groupName: string | null;
   sequenceNumber: number;
   defaultDurationDays: number | null;
   isFixed: boolean;
@@ -41,6 +42,7 @@ export interface Task {
   studyId: string;
   taskName: string;
   description: string | null;
+  groupName: string | null;
   sequenceNumber: number;
   currentStartDate: string;
   currentEndDate: string;

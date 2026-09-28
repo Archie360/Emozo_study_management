@@ -24,6 +24,7 @@ const STUDY_USER_RELATIONS = {
 interface InlineTaskInput {
   taskName: string;
   description?: string;
+  groupName?: string;
   startDate: Date;
   endDate: Date;
   sequenceNumber: number;
@@ -193,6 +194,7 @@ async function copyStudyTypeTasksAsIs(
         sourceStudyTypeTaskId: templateTask.id,
         taskName: templateTask.taskName,
         description: templateTask.description,
+        groupName: templateTask.groupName,
         sequenceNumber: templateTask.sequenceNumber,
         currentStartDate: start,
         currentEndDate: end,
@@ -230,6 +232,7 @@ async function createInlineTasks(
         studyId,
         taskName: task.taskName,
         description: task.description,
+        groupName: task.groupName,
         sequenceNumber: task.sequenceNumber,
         currentStartDate: task.startDate,
         currentEndDate: task.endDate,

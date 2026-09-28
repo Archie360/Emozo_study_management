@@ -6,6 +6,7 @@ export interface EditableTask {
   tempId: string;
   taskName: string;
   description: string;
+  groupName: string;
   startDate: string;
   endDate: string;
 }
@@ -42,7 +43,14 @@ export function StudyTaskEditor({
     const start = last?.endDate ?? "";
     onChange([
       ...tasks,
-      { tempId: crypto.randomUUID(), taskName: "", description: "", startDate: start, endDate: start },
+      {
+        tempId: crypto.randomUUID(),
+        taskName: "",
+        description: "",
+        groupName: last?.groupName ?? "",
+        startDate: start,
+        endDate: start,
+      },
     ]);
   }
 
@@ -70,13 +78,19 @@ export function StudyTaskEditor({
           </div>
           <div className="grid flex-1 grid-cols-12 gap-2">
             <input
-              className={`${inputClass} col-span-4`}
+              className={`${inputClass} col-span-2`}
+              placeholder="Group"
+              value={task.groupName}
+              onChange={(e) => update(task.tempId, { groupName: e.target.value })}
+            />
+            <input
+              className={`${inputClass} col-span-3`}
               placeholder="Task name"
               value={task.taskName}
               onChange={(e) => update(task.tempId, { taskName: e.target.value })}
             />
             <input
-              className={`${inputClass} col-span-4`}
+              className={`${inputClass} col-span-3`}
               placeholder="Description (optional)"
               value={task.description}
               onChange={(e) => update(task.tempId, { description: e.target.value })}

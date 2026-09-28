@@ -9,6 +9,7 @@ export const createStudyTypeSchema = z.object({
       z.object({
         taskName: z.string().trim().min(1, "Task name is required."),
         description: z.string().optional(),
+        groupName: z.string().optional(),
         sequenceNumber: z.number().int().positive(),
         defaultDurationDays: z.number().int().nonnegative().optional(),
         isFixed: z.boolean().optional(),
@@ -37,6 +38,7 @@ export const reorderStudyTypeTasksSchema = z.object({
 export const addStudyTypeTaskSchema = z.object({
   taskName: z.string().trim().min(1, "Task name is required."),
   description: z.string().optional(),
+  groupName: z.string().optional(),
   sequenceNumber: z.number().int().positive().optional(),
   defaultDurationDays: z.number().int().nonnegative().optional(),
   isFixed: z.boolean().optional(),
@@ -45,6 +47,7 @@ export const addStudyTypeTaskSchema = z.object({
 export const updateStudyTypeTaskSchema = z.object({
   taskName: z.string().trim().min(1).optional(),
   description: z.string().optional(),
+  groupName: z.string().optional(),
   defaultDurationDays: z.number().int().nonnegative().optional(),
   isFixed: z.boolean().optional(),
 });

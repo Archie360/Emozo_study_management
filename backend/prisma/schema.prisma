@@ -94,6 +94,9 @@ model StudyTypeTask {
   studyType           StudyType @relation(fields: [studyTypeId], references: [id], onDelete: Cascade)
   taskName            String    @map("task_name")
   description         String?
+  // Named phase this task belongs to (e.g. "Qual Phase", "Quant Testing") —
+  // purely organizational, doesn't affect sequencing or scheduling.
+  groupName           String?   @map("group_name")
   sequenceNumber      Int       @map("sequence_number")
   defaultDurationDays Int?      @map("default_duration_days")
   // Fixed tasks (e.g. contracts, payments) can never be marked NOT_APPLICABLE
@@ -169,6 +172,7 @@ model Task {
   sourceStudyTypeTaskId String?    @map("source_study_type_task_id")
   taskName              String     @map("task_name")
   description           String?
+  groupName             String?    @map("group_name")
   sequenceNumber        Int        @map("sequence_number")
   currentStartDate      DateTime   @map("current_start_date") @db.Date
   currentEndDate        DateTime   @map("current_end_date") @db.Date
