@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Study & Task Manager",
+  title: "Emozo | Study & Task Manager",
   description: "Study and Task Management Application",
 };
 

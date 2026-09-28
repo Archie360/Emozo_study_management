@@ -19,7 +19,11 @@ export function NavBar() {
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
         <div className="flex items-center gap-8">
-          <span className="text-sm font-semibold text-gray-900">Study &amp; Task Manager</span>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/emozo-logo.svg" alt="Emozo" className="h-9 w-auto" />
+            <span className="text-sm font-semibold text-gray-900">Study &amp; Task Manager</span>
+          </Link>
           <nav className="flex gap-1">
             {LINKS.map((link) => {
               const active = pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href));

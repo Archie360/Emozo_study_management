@@ -29,7 +29,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/emozo-logo.svg" alt="Emozo" className="mb-6 h-24 w-auto" />
       <Card className="w-full max-w-sm p-6">
         <h1 className="mb-1 text-lg font-semibold text-gray-900">Study &amp; Task Manager</h1>
         <p className="mb-6 text-sm text-gray-500">Sign in with your email and password.</p>
