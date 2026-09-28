@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AuthGate } from "@/components/AuthGate";
 import { api, toQuery } from "@/lib/api";
@@ -9,26 +9,76 @@ import { ActiveStudyReportItem, Paginated } from "@/lib/types";
 import { formatDate, formatScheduleVariance } from "@/lib/format";
 import { Card, ErrorBanner, inputClass, ProgressBar } from "@/components/ui";
 
-const SORT_OPTIONS = [
-  { value: "last_updated:desc", label: "Last Updated" },
-  { value: "study_name:asc", label: "Study Name" },
-  { value: "expected_completion:asc", label: "Expected Completion" },
-  { value: "priority:desc", label: "Priority" },
+type SortKey = "studyName" | "owner" | "progress" | "currentStage" | "originalCompletion" | "expectedCompletion" | "scheduleVariance";
+type SortDir = "asc" | "desc";
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "studyName", label: "Study" },
+  { key: "owner", label: "Owner" },
+  { key: "progress", label: "Progress" },
+  { key: "currentStage", label: "Current Stage" },
+  { key: "originalCompletion", label: "Original Completion" },
+  { key: "expectedCompletion", label: "Expected Completion" },
+  { key: "scheduleVariance", label: "Schedule Variance" },
 ];
 
+function sortValue(item: ActiveStudyReportItem, key: SortKey): string | number {
+  switch (key) {
+    case "studyName":
+      return item.studyName.toLowerCase();
+    case "owner":
+      return item.owner.name.toLowerCase();
+    case "progress":
+      return item.progressPercent;
+    case "currentStage":
+      return item.currentStage.toLowerCase();
+    case "originalCompletion":
+      return item.originalCompletion ?? "";
+    case "expectedCompletion":
+      return item.expectedCompletion ?? "";
+    case "scheduleVariance":
+      return item.scheduleVarianceDays ?? 0;
+  }
+}
+
 // Spec 27-29: Active Studies Dashboard — filters, sorting, calculated columns.
+// The report is fetched in full (up to 50 rows, no further pagination in
+// this UI), so sorting happens client-side on whatever column is clicked —
+// that covers computed columns like Progress and Current Stage too, which
+// have no backing DB column to sort by server-side.
 export default function DashboardPage() {
-  const [sort, setSort] = useState(SORT_OPTIONS[0].value);
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("expectedCompletion");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const { data, loading, error } = useApi<Paginated<ActiveStudyReportItem>>(
-    () => api.get(`/reports/active-studies${toQuery({ sort, page_size: 50 })}`),
-    [sort]
+    () => api.get(`/reports/active-studies${toQuery({ page_size: 50 })}`),
+    []
   );
 
-  const items = search
-    ? data?.items.filter((s) => s.studyName.toLowerCase().includes(search.toLowerCase()))
-    : data?.items;
+  function toggleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const items = useMemo(() => {
+    const filtered = search
+      ? data?.items.filter((s) => s.studyName.toLowerCase().includes(search.toLowerCase()))
+      : data?.items;
+    if (!filtered) return filtered;
+    const sorted = [...filtered].sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, search, sortKey, sortDir]);
 
   return (
     <AuthGate>
@@ -50,17 +100,6 @@ export default function DashboardPage() {
           onChange={(e) => setSearch(e.target.value)}
           className={`w-64 ${inputClass}`}
         />
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className={inputClass}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              Sort: {o.label}
-            </option>
-          ))}
-        </select>
       </div>
 
       <ErrorBanner message={error} />
@@ -69,26 +108,33 @@ export default function DashboardPage() {
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr className="text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-              <th className="px-4 py-3">Study</th>
-              <th className="px-4 py-3">Owner</th>
-              <th className="px-4 py-3">Progress</th>
-              <th className="px-4 py-3">Current Stage</th>
-              <th className="px-4 py-3">Original Completion</th>
-              <th className="px-4 py-3">Expected Completion</th>
-              <th className="px-4 py-3">Schedule Variance</th>
+              {COLUMNS.map((col) => (
+                <th key={col.key} className="px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(col.key)}
+                    className="inline-flex items-center gap-1 hover:text-gray-700"
+                  >
+                    {col.label}
+                    <span className="text-gray-300">
+                      {sortKey === col.key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                    </span>
+                  </button>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={COLUMNS.length} className="px-4 py-6 text-center text-gray-400">
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && items?.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={COLUMNS.length} className="px-4 py-6 text-center text-gray-400">
                   No active studies.
                 </td>
               </tr>
