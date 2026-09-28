@@ -56,7 +56,6 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   ownedStudies         Study[]             @relation("StudyOwner")
-  pocStudies           Study[]             @relation("StudyPoc")
   createdStudies       Study[]             @relation("StudyCreatedBy")
   createdStudyTypes    StudyType[]
   createdTasks         Task[]              @relation("TaskCreatedBy")
@@ -118,9 +117,8 @@ model Study {
   ownerUserId                   String      @map("owner_user_id")
   owner                         User        @relation("StudyOwner", fields: [ownerUserId], references: [id])
   // Emozo's internal point of contact for this deal — distinct from Owner,
-  // who runs the tasks day to day.
-  emozoPocUserId                String?     @map("emozo_poc_user_id")
-  emozoPoc                      User?       @relation("StudyPoc", fields: [emozoPocUserId], references: [id])
+  // who runs the tasks day to day. Free text, not a User reference.
+  emozoPoc                      String?     @map("emozo_poc")
   clientBusinessUnit            String?     @map("client_business_unit")
   clientName                    String?     @map("client_name")
   clientLocation                String?     @map("client_location")

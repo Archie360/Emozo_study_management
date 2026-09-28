@@ -14,11 +14,10 @@ import {
 type TxClient = Prisma.TransactionClient;
 
 // Shared across every query that returns a Study to an HTTP response —
-// `owner: true` / `emozoPoc: true` would otherwise pull passwordHash along
-// with the rest of the User row.
+// `owner: true` would otherwise pull passwordHash along with the rest of
+// the User row. (emozoPoc is free text, not a User relation.)
 const STUDY_USER_RELATIONS = {
   owner: { select: USER_SUMMARY_SELECT },
-  emozoPoc: { select: USER_SUMMARY_SELECT },
   studyType: true,
 } as const;
 
@@ -39,7 +38,7 @@ interface CreateStudyInput {
   studyName: string;
   studyTypeId: string;
   ownerUserId: string;
-  emozoPocUserId?: string;
+  emozoPoc?: string;
   description?: string;
   clientName?: string;
   clientLocation?: string;
@@ -252,7 +251,7 @@ export async function createStudy(input: CreateStudyInput, userId: string) {
         studyName: input.studyName,
         studyTypeId: input.studyTypeId,
         ownerUserId: input.ownerUserId,
-        emozoPocUserId: input.emozoPocUserId,
+        emozoPoc: input.emozoPoc,
         description: input.description,
         clientName: input.clientName,
         clientLocation: input.clientLocation,
@@ -354,7 +353,7 @@ async function getStudyTx(tx: TxClient, id: string) {
 interface UpdateStudyInput {
   studyName?: string;
   ownerUserId?: string;
-  emozoPocUserId?: string;
+  emozoPoc?: string;
   description?: string;
   clientName?: string;
   clientLocation?: string;
@@ -380,7 +379,7 @@ export async function updateStudy(id: string, input: UpdateStudyInput, userId: s
       data: {
         studyName: input.studyName,
         ownerUserId: input.ownerUserId,
-        emozoPocUserId: input.emozoPocUserId,
+        emozoPoc: input.emozoPoc,
         description: input.description,
         clientName: input.clientName,
         clientLocation: input.clientLocation,

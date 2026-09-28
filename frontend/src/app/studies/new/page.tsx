@@ -12,7 +12,7 @@ interface StudyForm {
   studyName: string;
   studyTypeId: string;
   ownerUserId: string;
-  emozoPocUserId: string;
+  emozoPoc: string;
   description: string;
   clientName: string;
   clientLocation: string;
@@ -29,7 +29,7 @@ const EMPTY_FORM: StudyForm = {
   studyName: "",
   studyTypeId: "",
   ownerUserId: "",
-  emozoPocUserId: "",
+  emozoPoc: "",
   description: "",
   clientName: "",
   clientLocation: "",
@@ -79,7 +79,7 @@ export default function CreateStudyPage() {
         studyName: form.studyName,
         studyTypeId: form.studyTypeId,
         ownerUserId: form.ownerUserId,
-        emozoPocUserId: form.emozoPocUserId || undefined,
+        emozoPoc: form.emozoPoc || undefined,
         description: form.description || undefined,
         clientName: form.clientName || undefined,
         clientLocation: form.clientLocation || undefined,
@@ -152,18 +152,11 @@ export default function CreateStudyPage() {
             </select>
           </Field>
           <Field label="Emozo PoC">
-            <select
+            <input
               className={inputClass}
-              value={form.emozoPocUserId}
-              onChange={(e) => setForm({ ...form, emozoPocUserId: e.target.value })}
-            >
-              <option value="">Select PoC…</option>
-              {users?.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+              value={form.emozoPoc}
+              onChange={(e) => setForm({ ...form, emozoPoc: e.target.value })}
+            />
           </Field>
           <Field label="Likely Start Date *">
             <input

@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { Study, StudyStatus, StudyType, Task, TaskCreationMethod, TaskStatus, User } from "@/lib/types";
+import { Study, StudyStatus, StudyType, Task, TaskCreationMethod, TaskStatus } from "@/lib/types";
 import { formatCurrency, formatDate, formatScheduleVariance, toInputDate } from "@/lib/format";
 import { StudyStatusBadge, TaskStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Button, Card, ErrorBanner, Field, inputClass, Modal, ProgressBar, SuccessToast } from "@/components/ui";
@@ -87,7 +87,7 @@ export default function StudyDetailPage() {
             </div>
             <p className="text-sm text-gray-500">
               {study.studyType?.name ?? "Custom"} · Owner: {study.owner.name}
-              {study.emozoPoc && ` · Emozo PoC: ${study.emozoPoc.name}`}
+              {study.emozoPoc && ` · Emozo PoC: ${study.emozoPoc}`}
             </p>
           </div>
           <div className="flex gap-2">
@@ -337,13 +337,12 @@ function SummaryItem({ label, value, subValue }: { label: string; value: string;
 function EditStudyModal({ study, onClose, onSaved }: { study: Study; onClose: () => void; onSaved: (msg: string) => void }) {
   const [studyName, setStudyName] = useState(study.studyName);
   const [description, setDescription] = useState(study.description ?? "");
-  const [emozoPocUserId, setEmozoPocUserId] = useState(study.emozoPocUserId ?? "");
+  const [emozoPoc, setEmozoPoc] = useState(study.emozoPoc ?? "");
   const [clientName, setClientName] = useState(study.clientName ?? "");
   const [clientLocation, setClientLocation] = useState(study.clientLocation ?? "");
   const [sponsorInfo, setSponsorInfo] = useState(study.sponsorInfo ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const { data: users } = useApi<User[]>(() => api.get("/users"), []);
 
   async function save() {
     setSubmitting(true);
@@ -352,7 +351,7 @@ function EditStudyModal({ study, onClose, onSaved }: { study: Study; onClose: ()
       await api.patch(`/studies/${study.id}`, {
         studyName,
         description,
-        emozoPocUserId: emozoPocUserId || undefined,
+        emozoPoc: emozoPoc || undefined,
         clientName: clientName || undefined,
         clientLocation: clientLocation || undefined,
         sponsorInfo: sponsorInfo || undefined,
@@ -377,14 +376,7 @@ function EditStudyModal({ study, onClose, onSaved }: { study: Study; onClose: ()
           <input className={inputClass} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
         <Field label="Emozo PoC">
-          <select className={inputClass} value={emozoPocUserId} onChange={(e) => setEmozoPocUserId(e.target.value)}>
-            <option value="">None</option>
-            {users?.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
+          <input className={inputClass} value={emozoPoc} onChange={(e) => setEmozoPoc(e.target.value)} />
         </Field>
         <Field label="Client Name">
           <input className={inputClass} value={clientName} onChange={(e) => setClientName(e.target.value)} />

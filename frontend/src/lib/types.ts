@@ -96,8 +96,7 @@ export interface Study {
   description: string | null;
   ownerUserId: string;
   owner: User;
-  emozoPocUserId: string | null;
-  emozoPoc: User | null;
+  emozoPoc: string | null;
   clientBusinessUnit: string | null;
   clientName: string | null;
   clientLocation: string | null;

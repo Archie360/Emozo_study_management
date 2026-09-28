@@ -19,7 +19,7 @@ export const createStudySchema = z
     studyName: z.string().trim().min(1, "Study Name is required."),
     studyTypeId: z.string().uuid("Project Type is required."),
     ownerUserId: z.string().uuid("Owner is required."),
-    emozoPocUserId: z.string().uuid().optional(),
+    emozoPoc: z.string().optional(),
     description: z.string().optional(),
     clientName: z.string().optional(),
     clientLocation: z.string().optional(),
@@ -39,7 +39,7 @@ export const createStudySchema = z
 export const updateStudySchema = z.object({
   studyName: z.string().trim().min(1).optional(),
   ownerUserId: z.string().uuid().optional(),
-  emozoPocUserId: z.string().uuid().optional(),
+  emozoPoc: z.string().optional(),
   description: z.string().optional(),
   clientName: z.string().optional(),
   clientLocation: z.string().optional(),
