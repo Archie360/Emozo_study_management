@@ -1,4 +1,4 @@
-import { Priority, StudyStatus } from "@prisma/client";
+import { Priority, StudyStatus, TaskCreationMethod } from "@prisma/client";
 import { z } from "zod";
 
 const dateString = z.coerce.date();
@@ -13,8 +13,11 @@ const inlineTaskSchema = z.object({
   isFixed: z.boolean().optional(),
 });
 
-// A Study is defined first (status PROPOSED) with just its info fields —
-// no tasks yet. Tasks only get created later, on confirmStudySoldSchema.
+// A Study is defined first (status PROPOSED). The task-creation method is
+// chosen here, once: STUDY_TYPE_AS_IS instantiates the template's first
+// task group now and defers the rest to confirmStudySold (no further
+// choice needed there); MODIFIED_TEMPLATE/FROM_SCRATCH create every given
+// task now, since there's no template "rest" left to defer.
 export const createStudySchema = z
   .object({
     studyName: z.string().trim().min(1, "Study Name is required."),
@@ -31,11 +34,27 @@ export const createStudySchema = z
     originalCompletionDate: dateString,
     likelyTotalRevenue: z.number().nonnegative().optional(),
     estimatedTotalExpenses: z.number().nonnegative().optional(),
+    taskCreationMethod: z.nativeEnum(TaskCreationMethod),
+    tasks: z.array(inlineTaskSchema).optional(),
   })
   .refine((data) => data.originalCompletionDate >= data.originalStartDate, {
     message: "Original Completion Date cannot be earlier than Original Start Date.",
     path: ["originalCompletionDate"],
-  });
+  })
+  .refine(
+    (data) =>
+      data.taskCreationMethod === TaskCreationMethod.FROM_SCRATCH
+        ? !!data.tasks && data.tasks.length > 0
+        : true,
+    { message: "At least one task is required.", path: ["tasks"] }
+  )
+  .refine(
+    (data) =>
+      data.taskCreationMethod === TaskCreationMethod.MODIFIED_TEMPLATE
+        ? !!data.tasks && data.tasks.length > 0
+        : true,
+    { message: "At least one task is required.", path: ["tasks"] }
+  );
 
 export const updateStudySchema = z.object({
   studyName: z.string().trim().min(1).optional(),
@@ -55,20 +74,12 @@ export const changeStudyStatusSchema = z.object({
   version: z.number().int(),
 });
 
-// Confirming a Study as sold: instantiate the rest of its tasks from the
-// chosen template (or build them from scratch), and flip PROPOSED -> CONFIRMED_SOLD.
-export const confirmStudySoldSchema = z
-  .object({
-    taskCreationMethod: z.enum(["STUDY_TYPE_AS_IS", "MODIFIED_TEMPLATE", "FROM_SCRATCH"]),
-    studyTypeId: z.string().uuid().optional(),
-    tasks: z.array(inlineTaskSchema).optional(),
-    version: z.number().int(),
-  })
-  .refine(
-    (data) =>
-      data.taskCreationMethod === "FROM_SCRATCH" ? !!data.tasks && data.tasks.length > 0 : true,
-    { message: "At least one task is required.", path: ["tasks"] }
-  );
+// Confirming a Study as sold: the task-creation method was already fixed at
+// creation, so this needs no other input — it just instantiates whatever's
+// left (if anything) and flips PROPOSED -> CONFIRMED_SOLD.
+export const confirmStudySoldSchema = z.object({
+  version: z.number().int(),
+});
 
 export const updateStudyEstimatesSchema = z.object({
   likelyTotalRevenue: z.number().nonnegative().optional(),

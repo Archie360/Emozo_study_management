@@ -119,6 +119,7 @@ export interface Study {
   totalExpensesChangeCount: number;
   currentExpectedCompletionDate: string | null;
   status: StudyStatus;
+  taskCreationMethod: TaskCreationMethod | null;
   version: number;
   createdAt: string;
   updatedAt: string;

@@ -38,6 +38,16 @@ enum TaskStatus {
   NOT_APPLICABLE
 }
 
+// Chosen once, at Study creation. STUDY_TYPE_AS_IS instantiates the first
+// task group immediately and defers the rest to confirmStudySold, which
+// instantiates them automatically with no further choice. The other two
+// methods create every task immediately — there's no "rest" left to defer.
+enum TaskCreationMethod {
+  STUDY_TYPE_AS_IS
+  MODIFIED_TEMPLATE
+  FROM_SCRATCH
+}
+
 enum Priority {
   LOW
   MEDIUM
@@ -145,6 +155,9 @@ model Study {
   // Calculated field, persisted for query performance (spec 21, 58)
   currentExpectedCompletionDate DateTime?   @map("current_expected_completion_date") @db.Date
   status                        StudyStatus @default(PROPOSED)
+  // Chosen once at creation; null on studies created before this field
+  // existed, treated as STUDY_TYPE_AS_IS for confirmStudySold purposes.
+  taskCreationMethod            TaskCreationMethod? @map("task_creation_method")
   createdBy                     String      @map("created_by")
   creator                       User        @relation("StudyCreatedBy", fields: [createdBy], references: [id])
   createdAt                     DateTime    @default(now()) @map("created_at")

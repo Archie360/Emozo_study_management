@@ -6,11 +6,10 @@ import { useParams, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { Study, StudyStatus, StudyType, Task, TaskCreationMethod, TaskStatus } from "@/lib/types";
+import { Study, StudyStatus, Task, TaskStatus } from "@/lib/types";
 import { formatCurrency, formatDate, formatScheduleVariance, toInputDate } from "@/lib/format";
 import { StudyStatusBadge, TaskStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Button, Card, ErrorBanner, Field, inputClass, Modal, ProgressBar, SuccessToast } from "@/components/ui";
-import { EditableTask, StudyTaskEditor } from "@/components/StudyTaskEditor";
 
 // PROPOSED -> CONFIRMED_SOLD only happens through the "Confirm as Sold" flow
 // below (it needs a task-creation method), so it's absent here.
@@ -519,90 +518,22 @@ function ChangeStudyStatusModal({ study, onClose, onSaved }: { study: Study; onC
 
 // PROPOSED -> CONFIRMED_SOLD: pick how to build the rest of the Study's
 // tasks, same three options the old "Create Study" step 2 offered.
+// The task-creation method was already fixed when this Study was created —
+// see studies/new. This has nothing left to ask: STUDY_TYPE_AS_IS studies
+// get their remaining template tasks instantiated automatically; the other
+// methods already have every task, so this is purely a status change.
 function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: () => void; onSaved: (msg: string) => void }) {
-  const [method, setMethod] = useState<TaskCreationMethod>("STUDY_TYPE_AS_IS");
-  const [studyTypeId, setStudyTypeId] = useState(study.studyTypeId ?? "");
-  const [tasks, setTasks] = useState<EditableTask[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: studyTypes } = useApi<StudyType[]>(() => api.get("/study-types?status=ACTIVE"), []);
-  const { data: selectedStudyType } = useApi<StudyType | null>(
-    () => (studyTypeId ? api.get(`/study-types/${studyTypeId}`) : Promise.resolve(null)),
-    [studyTypeId]
-  );
+  const willCreateMore = study.taskCreationMethod === null || study.taskCreationMethod === "STUDY_TYPE_AS_IS";
 
-  // Group 1 (the pre-sale phase) was already instantiated when this Study
-  // was created — this flow only builds what's left. Excluded by template
-  // task id rather than group name so it stays correct even if the Study's
-  // existing tasks were edited or renamed after creation.
-  const alreadyInstantiatedIds = new Set(
-    study.tasks.map((t) => t.sourceStudyTypeTaskId).filter((v): v is string => v !== null)
-  );
-  const remainingTemplateTasks = (type: StudyType) =>
-    [...(type.tasks ?? [])]
-      .filter((t) => !alreadyInstantiatedIds.has(t.id))
-      .sort((a, b) => a.sequenceNumber - b.sequenceNumber);
-  const nextStartDate = (() => {
-    if (study.tasks.length === 0) return study.originalStartDate ? new Date(study.originalStartDate) : new Date();
-    const latestEnd = study.tasks.reduce(
-      (latest, t) => (t.currentEndDate > latest ? t.currentEndDate : latest),
-      study.tasks[0].currentEndDate
-    );
-    const next = new Date(latestEnd);
-    next.setDate(next.getDate() + 1);
-    return next;
-  })();
-
-  function selectStudyTypeForModify(type: StudyType) {
-    setStudyTypeId(type.id);
-    const remaining = remainingTemplateTasks(type);
-    if (remaining.length === 0) {
-      setTasks([]);
-      return;
-    }
-    let cursor = new Date(nextStartDate);
-    const seeded = remaining
-      .map((t) => {
-        const duration = t.defaultDurationDays ?? 1;
-        const start = new Date(cursor);
-        const end = new Date(cursor);
-        end.setDate(end.getDate() + Math.max(duration - 1, 0));
-        cursor = new Date(end);
-        cursor.setDate(cursor.getDate() + 1);
-        return {
-          tempId: crypto.randomUUID(),
-          taskName: t.taskName,
-          description: t.description ?? "",
-          groupName: t.groupName ?? "",
-          startDate: start.toISOString().slice(0, 10),
-          endDate: end.toISOString().slice(0, 10),
-        };
-      });
-    setTasks(seeded);
-  }
-
-  async function save() {
+  async function confirm() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post(`/studies/${study.id}/confirm-sold`, {
-        taskCreationMethod: method,
-        studyTypeId: method === "FROM_SCRATCH" ? undefined : studyTypeId,
-        tasks:
-          method === "STUDY_TYPE_AS_IS"
-            ? undefined
-            : tasks.map((t, i) => ({
-                taskName: t.taskName,
-                description: t.description || undefined,
-                groupName: t.groupName || undefined,
-                startDate: t.startDate,
-                endDate: t.endDate,
-                sequenceNumber: i + 1,
-              })),
-        version: study.version,
-      });
-      onSaved("Study confirmed as sold — tasks created.");
+      await api.post(`/studies/${study.id}/confirm-sold`, { version: study.version });
+      onSaved("Study confirmed as sold.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to confirm as sold.");
     } finally {
@@ -610,107 +541,19 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
     }
   }
 
-  const canSubmit =
-    method === "STUDY_TYPE_AS_IS"
-      ? !!studyTypeId
-      : tasks.length > 0 && tasks.every((t) => t.taskName && t.startDate && t.endDate);
-
   return (
     <Modal open title="Confirm Study as Sold" onClose={onClose}>
       <ErrorBanner message={error} />
-      <p className="mb-4 text-xs text-gray-500">
-        {study.tasks.length > 0
-          ? `The first ${study.tasks.length} task(s) were already created when this Study was defined. This instantiates the rest and moves it to CONFIRMED_SOLD.`
-          : "This instantiates the Study's tasks and moves it to CONFIRMED_SOLD."}{" "}
-        It cannot be undone from here.
+      <p className="text-sm text-gray-600">
+        {willCreateMore
+          ? `The first ${study.tasks.length} task(s) were already created when this Study was defined. Confirming will instantiate the rest of its tasks and move it to CONFIRMED_SOLD.`
+          : "All of this Study's tasks were already created when it was defined. Confirming will move it to CONFIRMED_SOLD."}
       </p>
-      <div className="space-y-2">
-        {(
-          [
-            ["STUDY_TYPE_AS_IS", "Use an existing Study Type without modification"],
-            ["MODIFIED_TEMPLATE", "Start with an existing Study Type and modify it"],
-            ["FROM_SCRATCH", "Build Tasks from scratch"],
-          ] as [TaskCreationMethod, string][]
-        ).map(([value, label]) => (
-          <label key={value} className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="radio"
-              name="confirm-method"
-              checked={method === value}
-              onChange={() => {
-                setMethod(value);
-                setStudyTypeId(value === "FROM_SCRATCH" ? "" : study.studyTypeId ?? "");
-                setTasks([]);
-              }}
-            />
-            {label}
-          </label>
-        ))}
-      </div>
-
-      {(method === "STUDY_TYPE_AS_IS" || method === "MODIFIED_TEMPLATE") && (
-        <div className="mt-4">
-          <Field label="Study Type *">
-            <select
-              className={inputClass}
-              value={studyTypeId}
-              onChange={(e) => {
-                const type = studyTypes?.find((t) => t.id === e.target.value);
-                if (!type) return;
-                if (method === "MODIFIED_TEMPLATE") selectStudyTypeForModify(type);
-                else setStudyTypeId(type.id);
-              }}
-            >
-              <option value="">Select Study Type…</option>
-              {studyTypes?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t._count?.tasks ?? 0} tasks)
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      )}
-
-      {method === "STUDY_TYPE_AS_IS" && selectedStudyType && (
-        <div className="mt-4">
-          <p className="mb-2 text-sm font-medium text-gray-700">
-            Task list (review only) — remaining tasks
-            {study.tasks.length > 0 && `, after the ${study.tasks.length} already created`}
-          </p>
-          <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
-            {remainingTemplateTasks(selectedStudyType).map((t, i, sorted) => (
-                <li key={t.id}>
-                  {t.groupName && t.groupName !== sorted[i - 1]?.groupName && (
-                    <div className="bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      {t.groupName}
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between px-3 py-2 text-sm">
-                    <span>
-                      {t.sequenceNumber}. {t.taskName}
-                      {t.isFixed && <span className="ml-2 text-xs text-gray-400">Fixed</span>}
-                    </span>
-                    <span className="text-gray-400">{t.defaultDurationDays ?? 1} day(s)</span>
-                  </div>
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
-
-      {(method === "MODIFIED_TEMPLATE" || method === "FROM_SCRATCH") && (
-        <div className="mt-4">
-          <p className="mb-2 text-sm font-medium text-gray-700">Tasks</p>
-          <StudyTaskEditor tasks={tasks} onChange={setTasks} />
-        </div>
-      )}
-
       <div className="mt-6 flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={save} disabled={!canSubmit || submitting}>
+        <Button onClick={confirm} disabled={submitting}>
           {submitting ? "Confirming…" : "Confirm as Sold"}
         </Button>
       </div>
