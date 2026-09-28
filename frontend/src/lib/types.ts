@@ -43,6 +43,7 @@ export interface Task {
   taskName: string;
   description: string | null;
   groupName: string | null;
+  sourceStudyTypeTaskId: string | null;
   sequenceNumber: number;
   currentStartDate: string;
   currentEndDate: string;

@@ -532,15 +532,37 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
     [studyTypeId]
   );
 
+  // Group 1 (the pre-sale phase) was already instantiated when this Study
+  // was created — this flow only builds what's left. Excluded by template
+  // task id rather than group name so it stays correct even if the Study's
+  // existing tasks were edited or renamed after creation.
+  const alreadyInstantiatedIds = new Set(
+    study.tasks.map((t) => t.sourceStudyTypeTaskId).filter((v): v is string => v !== null)
+  );
+  const remainingTemplateTasks = (type: StudyType) =>
+    [...(type.tasks ?? [])]
+      .filter((t) => !alreadyInstantiatedIds.has(t.id))
+      .sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+  const nextStartDate = (() => {
+    if (study.tasks.length === 0) return study.originalStartDate ? new Date(study.originalStartDate) : new Date();
+    const latestEnd = study.tasks.reduce(
+      (latest, t) => (t.currentEndDate > latest ? t.currentEndDate : latest),
+      study.tasks[0].currentEndDate
+    );
+    const next = new Date(latestEnd);
+    next.setDate(next.getDate() + 1);
+    return next;
+  })();
+
   function selectStudyTypeForModify(type: StudyType) {
     setStudyTypeId(type.id);
-    if (!study.originalStartDate || !type.tasks) {
+    const remaining = remainingTemplateTasks(type);
+    if (remaining.length === 0) {
       setTasks([]);
       return;
     }
-    let cursor = new Date(study.originalStartDate);
-    const seeded = [...type.tasks]
-      .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+    let cursor = new Date(nextStartDate);
+    const seeded = remaining
       .map((t) => {
         const duration = t.defaultDurationDays ?? 1;
         const start = new Date(cursor);
@@ -597,7 +619,10 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
     <Modal open title="Confirm Study as Sold" onClose={onClose}>
       <ErrorBanner message={error} />
       <p className="mb-4 text-xs text-gray-500">
-        This instantiates the Study's tasks and moves it to CONFIRMED_SOLD. It cannot be undone from here.
+        {study.tasks.length > 0
+          ? `The first ${study.tasks.length} task(s) were already created when this Study was defined. This instantiates the rest and moves it to CONFIRMED_SOLD.`
+          : "This instantiates the Study's tasks and moves it to CONFIRMED_SOLD."}{" "}
+        It cannot be undone from here.
       </p>
       <div className="space-y-2">
         {(
@@ -649,11 +674,12 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
 
       {method === "STUDY_TYPE_AS_IS" && selectedStudyType && (
         <div className="mt-4">
-          <p className="mb-2 text-sm font-medium text-gray-700">Task list (review only)</p>
+          <p className="mb-2 text-sm font-medium text-gray-700">
+            Task list (review only) — remaining tasks
+            {study.tasks.length > 0 && `, after the ${study.tasks.length} already created`}
+          </p>
           <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
-            {[...(selectedStudyType.tasks ?? [])]
-              .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
-              .map((t, i, sorted) => (
+            {remainingTemplateTasks(selectedStudyType).map((t, i, sorted) => (
                 <li key={t.id}>
                   {t.groupName && t.groupName !== sorted[i - 1]?.groupName && (
                     <div className="bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400">

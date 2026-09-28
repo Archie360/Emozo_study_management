@@ -1,4 +1,13 @@
-import { Prisma, Priority, Study, StudyStatus, StudyTypeStatus, Task, TaskStatus } from "@prisma/client";
+import {
+  Prisma,
+  Priority,
+  Study,
+  StudyStatus,
+  StudyTypeStatus,
+  StudyTypeTask,
+  Task,
+  TaskStatus,
+} from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { ConflictError, NotFoundError, ValidationError } from "../../utils/errors";
 import { AuditAction, recordAudit } from "../audit/audit.service";
@@ -161,54 +170,61 @@ export async function getStudy(id: string) {
   return withMetrics(study);
 }
 
-async function copyStudyTypeTasksAsIs(
+// The first group (by earliest sequence number) in a template — e.g. CVP
+// Testing's "Commissioning & Contracting" — represents the pre-sale work of
+// getting a deal signed, so it's instantiated immediately when the Study is
+// defined (PROPOSED), not held back until CONFIRMED_SOLD. A template with no
+// groups at all (groupName null throughout) has no such concept, so nothing
+// gets pre-instantiated — the whole template waits for confirmStudySold,
+// same as before this feature existed.
+function firstGroupTasks(templateTasks: StudyTypeTask[]): StudyTypeTask[] {
+  const sorted = [...templateTasks].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+  const firstGroup = sorted[0]?.groupName;
+  if (!firstGroup) return [];
+  return sorted.filter((t) => t.groupName === firstGroup);
+}
+
+// Chain task dates sequentially from `startDate` using each template task's
+// default_duration_days (spec 12: "Sets initial TASK dates" — the spec does
+// not prescribe an exact algorithm, so this is a documented, deterministic
+// default that keeps tasks non-overlapping). Built up in memory and inserted
+// with one createMany call — issuing one sequential await per task inside a
+// single interactive transaction was blowing past Prisma's transaction
+// timeout against the remote pooled connection for larger templates,
+// silently rolling back every task.
+async function instantiateTemplateTasks(
   tx: TxClient,
   studyId: string,
-  studyTypeId: string,
-  originalStartDate: Date,
+  templateTasks: StudyTypeTask[],
+  startDate: Date,
   userId: string
 ) {
-  const studyType = await tx.studyType.findUnique({
-    where: { id: studyTypeId },
-    include: { tasks: { orderBy: { sequenceNumber: "asc" } } },
-  });
-  if (!studyType) throw new NotFoundError("Study Type");
-  if (studyType.status === StudyTypeStatus.ARCHIVED) {
-    throw new ValidationError("This Study Type is archived and cannot be used for new Studies.");
-  }
+  let cursor = new Date(startDate);
+  const taskRows = [...templateTasks]
+    .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+    .map((templateTask) => {
+      const durationDays = templateTask.defaultDurationDays ?? 1;
+      const start = new Date(cursor);
+      const end = new Date(cursor);
+      end.setDate(end.getDate() + Math.max(durationDays - 1, 0));
+      cursor = new Date(end);
+      cursor.setDate(cursor.getDate() + 1);
 
-  // Chain task dates sequentially from the study's original start date using
-  // each template task's default_duration_days (spec 12: "Sets initial TASK
-  // dates" — the spec does not prescribe an exact algorithm, so this is a
-  // documented, deterministic default that keeps tasks non-overlapping).
-  // Built up in memory and inserted with one createMany call — a template
-  // with dozens of tasks issuing that many sequential awaits inside a single
-  // interactive transaction was blowing past Prisma's transaction timeout
-  // against the remote pooled connection, silently rolling back every task.
-  let cursor = new Date(originalStartDate);
-  const taskRows = studyType.tasks.map((templateTask) => {
-    const durationDays = templateTask.defaultDurationDays ?? 1;
-    const start = new Date(cursor);
-    const end = new Date(cursor);
-    end.setDate(end.getDate() + Math.max(durationDays - 1, 0));
-    cursor = new Date(end);
-    cursor.setDate(cursor.getDate() + 1);
-
-    return {
-      studyId,
-      sourceStudyTypeTaskId: templateTask.id,
-      taskName: templateTask.taskName,
-      description: templateTask.description,
-      groupName: templateTask.groupName,
-      sequenceNumber: templateTask.sequenceNumber,
-      currentStartDate: start,
-      currentEndDate: end,
-      status: TaskStatus.NOT_STARTED,
-      isFixed: templateTask.isFixed,
-      dateChangeCount: 0,
-      createdBy: userId,
-    };
-  });
+      return {
+        studyId,
+        sourceStudyTypeTaskId: templateTask.id,
+        taskName: templateTask.taskName,
+        description: templateTask.description,
+        groupName: templateTask.groupName,
+        sequenceNumber: templateTask.sequenceNumber,
+        currentStartDate: start,
+        currentEndDate: end,
+        status: TaskStatus.NOT_STARTED,
+        isFixed: templateTask.isFixed,
+        dateChangeCount: 0,
+        createdBy: userId,
+      };
+    });
 
   if (taskRows.length > 0) {
     await tx.task.createMany({ data: taskRows });
@@ -251,8 +267,10 @@ async function createInlineTasks(
   });
 }
 
-// A Study is defined first as PROPOSED — info fields only, no tasks yet.
-// Tasks are only instantiated once it's confirmed sold (confirmStudySold).
+// A Study is defined first as PROPOSED. If its Study Type's template has
+// named groups, the first group's tasks (the pre-sale work) get instantiated
+// right away; the rest wait for confirmStudySold. A template with no groups
+// gets nothing yet — the whole thing waits for confirmStudySold, as before.
 export async function createStudy(input: CreateStudyInput, userId: string) {
   return prisma.$transaction(async (tx) => {
     const study = await tx.study.create({
@@ -276,12 +294,24 @@ export async function createStudy(input: CreateStudyInput, userId: string) {
       },
     });
 
+    const studyType = await tx.studyType.findUnique({
+      where: { id: input.studyTypeId },
+      include: { tasks: true },
+    });
+    if (!studyType) throw new NotFoundError("Study Type");
+
+    const groupOneTasks = firstGroupTasks(studyType.tasks);
+    if (groupOneTasks.length > 0) {
+      await instantiateTemplateTasks(tx, study.id, groupOneTasks, input.originalStartDate, userId);
+      await recalcStudyExpectedCompletion(tx, study.id);
+    }
+
     await recordAudit(tx, {
       entityType: "STUDY",
       entityId: study.id,
       action: AuditAction.STUDY_CREATED,
       userId,
-      newValue: { studyTypeId: input.studyTypeId },
+      newValue: { studyTypeId: input.studyTypeId, groupOneTasksCreated: groupOneTasks.length },
     });
 
     return getStudyTx(tx, study.id);
@@ -295,10 +325,12 @@ interface ConfirmStudySoldInput {
   version: number;
 }
 
-// Once a Study is CONFIRMED_SOLD, the rest of its tasks get instantiated
-// from the appropriate template — this is that transition. Re-confirming a
-// Study that was CANCELLED after already having tasks is a no-op on tasks
-// (they're left as-is); only a Study with zero tasks gets them created.
+// Once a Study is CONFIRMED_SOLD, the rest of its tasks (everything past the
+// first group, already instantiated at createStudy) get instantiated from
+// the appropriate template. Continues the task-date chain and sequence
+// numbering right after whatever already exists, so this is safe to call
+// whether the Study has zero tasks (an ungrouped template) or already has
+// its first group.
 export async function confirmStudySold(id: string, input: ConfirmStudySoldInput, userId: string) {
   const existing = await prisma.study.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError("Study");
@@ -311,21 +343,51 @@ export async function confirmStudySold(id: string, input: ConfirmStudySoldInput,
   }
 
   return prisma.$transaction(async (tx) => {
-    const existingTaskCount = await tx.task.count({ where: { studyId: id, deletedAt: null } });
+    const existingTasks = await tx.task.findMany({
+      where: { studyId: id, deletedAt: null },
+      orderBy: { sequenceNumber: "asc" },
+    });
+    const alreadyInstantiated = new Set(
+      existingTasks.map((t) => t.sourceStudyTypeTaskId).filter((v): v is string => v !== null)
+    );
+    const nextCursor = new Date(
+      existingTasks.length > 0
+        ? existingTasks.reduce(
+            (latest, t) => (t.currentEndDate > latest ? t.currentEndDate : latest),
+            existingTasks[0].currentEndDate
+          )
+        : existing.originalStartDate!
+    );
+    if (existingTasks.length > 0) nextCursor.setDate(nextCursor.getDate() + 1);
+    const nextSequenceNumber =
+      existingTasks.length > 0 ? Math.max(...existingTasks.map((t) => t.sequenceNumber)) + 1 : 1;
 
-    if (existingTaskCount === 0) {
-      if (input.taskCreationMethod === "STUDY_TYPE_AS_IS") {
-        const studyTypeId = input.studyTypeId ?? existing.studyTypeId;
-        if (!studyTypeId) {
-          throw new ValidationError("A Study Type must be selected for this task creation method.");
-        }
-        await copyStudyTypeTasksAsIs(tx, id, studyTypeId, existing.originalStartDate!, userId);
-      } else {
-        // MODIFIED_TEMPLATE and FROM_SCRATCH both arrive as an explicit task
-        // list — the "modification" of the template happens client-side
-        // before submission (spec 13); the server only persists the result.
-        await createInlineTasks(tx, id, input.tasks ?? [], userId);
+    if (input.taskCreationMethod === "STUDY_TYPE_AS_IS") {
+      const studyTypeId = input.studyTypeId ?? existing.studyTypeId;
+      if (!studyTypeId) {
+        throw new ValidationError("A Study Type must be selected for this task creation method.");
       }
+      const studyType = await tx.studyType.findUnique({
+        where: { id: studyTypeId },
+        include: { tasks: true },
+      });
+      if (!studyType) throw new NotFoundError("Study Type");
+      if (studyType.status === StudyTypeStatus.ARCHIVED) {
+        throw new ValidationError("This Study Type is archived and cannot be used for new Studies.");
+      }
+
+      const remaining = studyType.tasks.filter((t) => !alreadyInstantiated.has(t.id));
+      await instantiateTemplateTasks(tx, id, remaining, nextCursor, userId);
+    } else {
+      // MODIFIED_TEMPLATE and FROM_SCRATCH both arrive as an explicit task
+      // list for what's left to build — the "modification" of the template
+      // happens client-side before submission (spec 13); the server only
+      // persists the result, renumbering it to continue after any tasks
+      // already instantiated (e.g. the first group, created at Study
+      // definition time).
+      const offset = nextSequenceNumber - 1;
+      const tasks = (input.tasks ?? []).map((t) => ({ ...t, sequenceNumber: t.sequenceNumber + offset }));
+      await createInlineTasks(tx, id, tasks, userId);
     }
 
     await recalcStudyExpectedCompletion(tx, id);
