@@ -181,32 +181,37 @@ async function copyStudyTypeTasksAsIs(
   // each template task's default_duration_days (spec 12: "Sets initial TASK
   // dates" — the spec does not prescribe an exact algorithm, so this is a
   // documented, deterministic default that keeps tasks non-overlapping).
+  // Built up in memory and inserted with one createMany call — a template
+  // with dozens of tasks issuing that many sequential awaits inside a single
+  // interactive transaction was blowing past Prisma's transaction timeout
+  // against the remote pooled connection, silently rolling back every task.
   let cursor = new Date(originalStartDate);
-  for (const templateTask of studyType.tasks) {
+  const taskRows = studyType.tasks.map((templateTask) => {
     const durationDays = templateTask.defaultDurationDays ?? 1;
     const start = new Date(cursor);
     const end = new Date(cursor);
     end.setDate(end.getDate() + Math.max(durationDays - 1, 0));
-
-    await tx.task.create({
-      data: {
-        studyId,
-        sourceStudyTypeTaskId: templateTask.id,
-        taskName: templateTask.taskName,
-        description: templateTask.description,
-        groupName: templateTask.groupName,
-        sequenceNumber: templateTask.sequenceNumber,
-        currentStartDate: start,
-        currentEndDate: end,
-        status: TaskStatus.NOT_STARTED,
-        isFixed: templateTask.isFixed,
-        dateChangeCount: 0,
-        createdBy: userId,
-      },
-    });
-
     cursor = new Date(end);
     cursor.setDate(cursor.getDate() + 1);
+
+    return {
+      studyId,
+      sourceStudyTypeTaskId: templateTask.id,
+      taskName: templateTask.taskName,
+      description: templateTask.description,
+      groupName: templateTask.groupName,
+      sequenceNumber: templateTask.sequenceNumber,
+      currentStartDate: start,
+      currentEndDate: end,
+      status: TaskStatus.NOT_STARTED,
+      isFixed: templateTask.isFixed,
+      dateChangeCount: 0,
+      createdBy: userId,
+    };
+  });
+
+  if (taskRows.length > 0) {
+    await tx.task.createMany({ data: taskRows });
   }
 }
 
@@ -227,22 +232,23 @@ async function createInlineTasks(
         endDate: "Must be on or after the start date",
       });
     }
-    await tx.task.create({
-      data: {
-        studyId,
-        taskName: task.taskName,
-        description: task.description,
-        groupName: task.groupName,
-        sequenceNumber: task.sequenceNumber,
-        currentStartDate: task.startDate,
-        currentEndDate: task.endDate,
-        status: TaskStatus.NOT_STARTED,
-        isFixed: task.isFixed ?? false,
-        dateChangeCount: 0,
-        createdBy: userId,
-      },
-    });
   }
+
+  await tx.task.createMany({
+    data: tasks.map((task) => ({
+      studyId,
+      taskName: task.taskName,
+      description: task.description,
+      groupName: task.groupName,
+      sequenceNumber: task.sequenceNumber,
+      currentStartDate: task.startDate,
+      currentEndDate: task.endDate,
+      status: TaskStatus.NOT_STARTED,
+      isFixed: task.isFixed ?? false,
+      dateChangeCount: 0,
+      createdBy: userId,
+    })),
+  });
 }
 
 // A Study is defined first as PROPOSED — info fields only, no tasks yet.
