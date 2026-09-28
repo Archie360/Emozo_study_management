@@ -139,6 +139,7 @@ export interface ActiveStudyReportItem {
   inProgressTasks: number;
   notStartedTasks: number;
   currentStage: string;
+  createdAt: string;
   originalCompletion: string | null;
   expectedCompletion: string | null;
   scheduleVarianceDays: number | null;

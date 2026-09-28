@@ -25,6 +25,7 @@ export async function getActiveStudiesReport(filters: Omit<StudyListFilters, "st
       inProgressTasks: study.metrics.taskStatusSummary.inProgress,
       notStartedTasks: study.metrics.taskStatusSummary.notStarted,
       currentStage: study.metrics.currentStage,
+      createdAt: study.createdAt,
       originalCompletion: study.originalCompletionDate,
       expectedCompletion: study.currentExpectedCompletionDate,
       scheduleVarianceDays: study.metrics.scheduleVarianceDays,

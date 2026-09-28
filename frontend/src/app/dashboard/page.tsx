@@ -9,7 +9,7 @@ import { ActiveStudyReportItem, Paginated } from "@/lib/types";
 import { formatDate, formatScheduleVariance } from "@/lib/format";
 import { Card, ErrorBanner, inputClass, ProgressBar } from "@/components/ui";
 
-type SortKey = "studyName" | "owner" | "progress" | "currentStage" | "originalCompletion" | "expectedCompletion" | "scheduleVariance";
+type SortKey = "studyName" | "owner" | "progress" | "currentStage" | "createdAt" | "originalCompletion" | "expectedCompletion" | "scheduleVariance";
 type SortDir = "asc" | "desc";
 
 const COLUMNS: { key: SortKey; label: string }[] = [
@@ -17,6 +17,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "owner", label: "Owner" },
   { key: "progress", label: "Progress" },
   { key: "currentStage", label: "Current Stage" },
+  { key: "createdAt", label: "Created" },
   { key: "originalCompletion", label: "Original Completion" },
   { key: "expectedCompletion", label: "Expected Completion" },
   { key: "scheduleVariance", label: "Schedule Variance" },
@@ -32,6 +33,8 @@ function sortValue(item: ActiveStudyReportItem, key: SortKey): string | number {
       return item.progressPercent;
     case "currentStage":
       return item.currentStage.toLowerCase();
+    case "createdAt":
+      return item.createdAt;
     case "originalCompletion":
       return item.originalCompletion ?? "";
     case "expectedCompletion":
@@ -155,6 +158,7 @@ export default function DashboardPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-gray-600">{s.currentStage}</td>
+                <td className="px-4 py-3 text-gray-600">{formatDate(s.createdAt)}</td>
                 <td className="px-4 py-3 text-gray-600">{formatDate(s.originalCompletion)}</td>
                 <td className="px-4 py-3 text-gray-600">{formatDate(s.expectedCompletion)}</td>
                 <td className="px-4 py-3">
