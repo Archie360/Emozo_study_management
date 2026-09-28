@@ -31,7 +31,7 @@ async function assertNameUniqueAmongActive(name: string, excludeId?: string) {
 export async function listStudyTypes(status?: StudyTypeStatus) {
   return prisma.studyType.findMany({
     where: status ? { status } : undefined,
-    include: { _count: { select: { tasks: true } } },
+    include: { _count: { select: { tasks: true, studies: true } } },
     orderBy: { updatedAt: "desc" },
   });
 }
@@ -120,28 +120,28 @@ export async function updateStudyType(
   });
 }
 
-// Spec 5: archived STUDY TYPES cannot be selected for new studies; existing
-// studies created from them remain unaffected. Spec 47: archive, don't delete.
-export async function archiveStudyType(id: string, userId: string) {
-  const existing = await getStudyType(id);
-
-  return prisma.$transaction(async (tx) => {
-    const archived = await tx.studyType.update({
-      where: { id },
-      data: { status: StudyTypeStatus.ARCHIVED, archivedAt: new Date(), version: { increment: 1 } },
-    });
-
-    await recordAudit(tx, {
-      entityType: "STUDY_TYPE",
-      entityId: id,
-      action: AuditAction.STUDY_TYPE_ARCHIVED,
-      userId,
-      previousValue: { status: existing.status },
-      newValue: { status: archived.status },
-    });
-
-    return archived;
+// Deleting a Study Type cascades its template tasks (they're just the
+// template, not execution data) and detaches any Study built from it —
+// Study.studyTypeId is ON DELETE SET NULL, so those Studies are otherwise
+// unaffected; they just show "Custom" as their type from then on. Existing
+// Studies' own Task rows are untouched either way (sourceStudyTypeTaskId is
+// provenance only, no FK back to the template — spec 65).
+export async function deleteStudyType(id: string, userId: string) {
+  const existing = await prisma.studyType.findUnique({
+    where: { id },
+    include: { _count: { select: { studies: true } } },
   });
+  if (!existing) throw new NotFoundError("Study Type");
+
+  await recordAudit(prisma, {
+    entityType: "STUDY_TYPE",
+    entityId: id,
+    action: AuditAction.STUDY_TYPE_DELETED,
+    userId,
+    previousValue: { name: existing.name, studiesDetached: existing._count.studies },
+  });
+
+  await prisma.studyType.delete({ where: { id } });
 }
 
 export async function duplicateStudyType(id: string, userId: string) {

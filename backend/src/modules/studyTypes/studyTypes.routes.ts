@@ -6,8 +6,8 @@ import { requireRole } from "../../middleware/authorize";
 import { UserRole } from "@prisma/client";
 import {
   addStudyTypeTask,
-  archiveStudyType,
   createStudyType,
+  deleteStudyType,
   deleteStudyTypeTask,
   duplicateStudyType,
   getStudyType,
@@ -62,11 +62,12 @@ studyTypesRouter.patch(
   })
 );
 
-studyTypesRouter.post(
-  "/study-types/:id/archive",
+studyTypesRouter.delete(
+  "/study-types/:id",
   requireRole(UserRole.ADMIN),
   asyncHandler(async (req, res) => {
-    res.json(await archiveStudyType(req.params.id, req.user!.id));
+    await deleteStudyType(req.params.id, req.user!.id);
+    res.status(204).send();
   })
 );
 

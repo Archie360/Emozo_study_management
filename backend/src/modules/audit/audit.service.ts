@@ -14,7 +14,7 @@ export const AuditAction = {
   TASK_STATUS_CHANGED: "TASK_STATUS_CHANGED",
   STUDY_TYPE_CREATED: "STUDY_TYPE_CREATED",
   STUDY_TYPE_UPDATED: "STUDY_TYPE_UPDATED",
-  STUDY_TYPE_ARCHIVED: "STUDY_TYPE_ARCHIVED",
+  STUDY_TYPE_DELETED: "STUDY_TYPE_DELETED",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

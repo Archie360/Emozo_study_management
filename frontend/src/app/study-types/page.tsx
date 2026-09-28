@@ -18,13 +18,18 @@ export default function StudyTypesPage() {
   const { data: types, loading, error, reload } = useApi<StudyType[]>(() => api.get("/study-types"), []);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  async function archive(id: string) {
-    if (!confirm("Archive this Study Type? Existing Studies created from it are unaffected.")) return;
+  async function remove(type: StudyType) {
+    const studyCount = type._count?.studies ?? 0;
+    const warning =
+      studyCount > 0
+        ? ` ${studyCount} existing Stud${studyCount === 1 ? "y" : "ies"} built from it will show "Custom" as their type afterward — their own tasks are unaffected.`
+        : "";
+    if (!confirm(`Delete "${type.name}"? This cannot be undone.${warning}`)) return;
     try {
-      await api.post(`/study-types/${id}/archive`);
+      await api.delete(`/study-types/${type.id}`);
       reload();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Failed to archive.");
+      setActionError(err instanceof ApiError ? err.message : "Failed to delete.");
     }
   }
 
@@ -89,11 +94,9 @@ export default function StudyTypesPage() {
                       <button className="text-xs text-gray-600 hover:underline" onClick={() => duplicate(t.id)}>
                         Duplicate
                       </button>
-                      {t.status === "ACTIVE" && (
-                        <Button variant="secondary" className="!px-2 !py-0.5 text-xs" onClick={() => archive(t.id)}>
-                          Archive
-                        </Button>
-                      )}
+                      <Button variant="danger" className="!px-2 !py-0.5 text-xs" onClick={() => remove(t)}>
+                        Delete
+                      </Button>
                     </div>
                   )}
                 </td>

@@ -23,7 +23,7 @@ export interface StudyType {
   createdAt: string;
   updatedAt: string;
   tasks?: StudyTypeTask[];
-  _count?: { tasks: number };
+  _count?: { tasks: number; studies?: number };
 }
 
 export interface StudyTypeTask {
