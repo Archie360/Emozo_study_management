@@ -11,7 +11,7 @@ import { StudyStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Card, ErrorBanner, inputClass, ProgressBar } from "@/components/ui";
 
 // Spec 30: STUDY List Screen — status filter (default CONFIRMED_SOLD), search.
-const STATUS_TABS: (StudyStatus | "ALL")[] = ["CONFIRMED_SOLD", "PROPOSED", "COMPLETE", "CANCELLED", "ALL"];
+const STATUS_TABS: (StudyStatus | "ALL")[] = ["PROPOSED", "CONFIRMED_SOLD", "COMPLETE", "CANCELLED", "ALL"];
 const STATUS_LABELS: Record<StudyStatus | "ALL", string> = {
   ALL: "All",
   PROPOSED: "Proposed",
