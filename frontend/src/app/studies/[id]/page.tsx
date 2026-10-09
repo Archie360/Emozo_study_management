@@ -558,7 +558,7 @@ function ConfirmSoldModal({ study, onClose, onSaved }: { study: Study; onClose: 
       <ErrorBanner message={error} />
       <p className="text-sm text-gray-600">
         {willCreateMore
-          ? `The first ${study.tasks.length} task(s) were already created when this Study was defined. Confirming will instantiate the rest of its tasks and move it to CONFIRMED_SOLD.`
+          ? `The first ${study.tasks.length} task(s) were already created when this Study was defined. Confirming will mark those complete, instantiate the rest of its tasks, and move it to CONFIRMED_SOLD.`
           : "All of this Study's tasks were already created when it was defined. Confirming will move it to CONFIRMED_SOLD."}
       </p>
       <div className="mt-6 flex justify-end gap-2">

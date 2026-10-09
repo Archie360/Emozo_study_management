@@ -354,6 +354,7 @@ export async function confirmStudySold(id: string, input: { version: number }, u
   }
 
   return prisma.$transaction(async (tx) => {
+    let tasksAutoCompleted = 0;
     // Null (studies created before this field existed) is treated as
     // STUDY_TYPE_AS_IS, matching the only behavior that existed before.
     if (
@@ -393,6 +394,39 @@ export async function confirmStudySold(id: string, input: { version: number }, u
 
       const remaining = studyType.tasks.filter((t) => !alreadyInstantiated.has(t.id));
       await instantiateTemplateTasks(tx, id, remaining, nextCursor, userId);
+
+      // The first group is the pre-sale work (commissioning, contracting) —
+      // reaching CONFIRMED_SOLD means it's done, so mark it complete
+      // automatically. Scoped to that group by name (not "every existing
+      // task") so re-confirming a Study that already has its full task list
+      // — e.g. CANCELLED back to PROPOSED after once being fully sold —
+      // doesn't blanket-complete tasks from other phases too. Already
+      // NOT_APPLICABLE tasks are left as-is.
+      const firstGroupName = firstGroupTasks(studyType.tasks)[0]?.groupName;
+      const toComplete = firstGroupName
+        ? existingTasks.filter(
+            (t) =>
+              t.groupName === firstGroupName &&
+              t.status !== TaskStatus.COMPLETE &&
+              t.status !== TaskStatus.NOT_APPLICABLE
+          )
+        : [];
+      if (toComplete.length > 0) {
+        await tx.taskStatusHistory.createMany({
+          data: toComplete.map((t) => ({
+            taskId: t.id,
+            previousStatus: t.status,
+            newStatus: TaskStatus.COMPLETE,
+            changedBy: userId,
+          })),
+        });
+        await tx.task.updateMany({
+          where: { id: { in: toComplete.map((t) => t.id) } },
+          data: { status: TaskStatus.COMPLETE, completedAt: new Date(), version: { increment: 1 } },
+        });
+        tasksAutoCompleted = toComplete.length;
+      }
+
       await recalcStudyExpectedCompletion(tx, id);
     }
 
@@ -407,7 +441,7 @@ export async function confirmStudySold(id: string, input: { version: number }, u
       action: AuditAction.STUDY_STATUS_CHANGED,
       userId,
       previousValue: { status: existing.status },
-      newValue: { status: updated.status },
+      newValue: { status: updated.status, tasksAutoCompleted },
     });
 
     return getStudyTx(tx, id);
