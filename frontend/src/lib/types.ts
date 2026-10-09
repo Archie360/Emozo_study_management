@@ -111,6 +111,7 @@ export interface Study {
   originalCompletionDate: string | null;
   previousOriginalCompletionDate: string | null;
   originalCompletionDateChangeCount: number;
+  currency: string;
   likelyTotalRevenue: string | null;
   previousTotalRevenue: string | null;
   totalRevenueChangeCount: number;

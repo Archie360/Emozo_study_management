@@ -10,6 +10,7 @@ import { Study, StudyStatus, Task, TaskStatus } from "@/lib/types";
 import { formatCurrency, formatDate, formatScheduleVariance, toInputDate } from "@/lib/format";
 import { StudyStatusBadge, TaskStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Button, Card, ErrorBanner, Field, inputClass, Modal, ProgressBar, SuccessToast } from "@/components/ui";
+import { CURRENCIES } from "@/lib/currencies";
 
 // PROPOSED -> CONFIRMED_SOLD only happens through the "Confirm as Sold" flow
 // below (it needs a task-creation method), so it's absent here.
@@ -130,19 +131,19 @@ export default function StudyDetailPage() {
           <SummaryItem label="Sponsor" value={study.sponsorInfo ?? "—"} />
           <SummaryItem
             label="Likely Total Revenue"
-            value={formatCurrency(study.likelyTotalRevenue)}
+            value={formatCurrency(study.likelyTotalRevenue, study.currency)}
             subValue={
               study.totalRevenueChangeCount > 0
-                ? `Previously ${formatCurrency(study.previousTotalRevenue)} · changed ${study.totalRevenueChangeCount}x`
+                ? `Previously ${formatCurrency(study.previousTotalRevenue, study.currency)} · changed ${study.totalRevenueChangeCount}x`
                 : undefined
             }
           />
           <SummaryItem
             label="Estimated Total Expenses"
-            value={formatCurrency(study.estimatedTotalExpenses)}
+            value={formatCurrency(study.estimatedTotalExpenses, study.currency)}
             subValue={
               study.totalExpensesChangeCount > 0
-                ? `Previously ${formatCurrency(study.previousTotalExpenses)} · changed ${study.totalExpensesChangeCount}x`
+                ? `Previously ${formatCurrency(study.previousTotalExpenses, study.currency)} · changed ${study.totalExpensesChangeCount}x`
                 : undefined
             }
           />
@@ -413,6 +414,7 @@ function EditStudyModal({ study, onClose, onSaved }: { study: Study; onClose: ()
 }
 
 function EditEstimatesModal({ study, onClose, onSaved }: { study: Study; onClose: () => void; onSaved: (msg: string) => void }) {
+  const [currency, setCurrency] = useState(study.currency);
   const [likelyTotalRevenue, setLikelyTotalRevenue] = useState(study.likelyTotalRevenue ?? "");
   const [estimatedTotalExpenses, setEstimatedTotalExpenses] = useState(study.estimatedTotalExpenses ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -423,6 +425,7 @@ function EditEstimatesModal({ study, onClose, onSaved }: { study: Study; onClose
     setError(null);
     try {
       await api.post(`/studies/${study.id}/estimates`, {
+        currency,
         likelyTotalRevenue: likelyTotalRevenue === "" ? undefined : Number(likelyTotalRevenue),
         estimatedTotalExpenses: estimatedTotalExpenses === "" ? undefined : Number(estimatedTotalExpenses),
         version: study.version,
@@ -439,7 +442,16 @@ function EditEstimatesModal({ study, onClose, onSaved }: { study: Study; onClose
     <Modal open title="Edit Estimates" onClose={onClose}>
       <ErrorBanner message={error} />
       <div className="space-y-4">
-        <Field label="Likely Total Revenue">
+        <Field label="Currency">
+          <select className={inputClass} value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={`Likely Total Revenue (${currency})`}>
           <input
             type="number"
             min={0}
@@ -448,7 +460,7 @@ function EditEstimatesModal({ study, onClose, onSaved }: { study: Study; onClose
             onChange={(e) => setLikelyTotalRevenue(e.target.value)}
           />
         </Field>
-        <Field label="Estimated Total Expenses">
+        <Field label={`Estimated Total Expenses (${currency})`}>
           <input
             type="number"
             min={0}

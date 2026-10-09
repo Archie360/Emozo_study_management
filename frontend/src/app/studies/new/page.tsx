@@ -8,6 +8,7 @@ import { useApi } from "@/lib/useApi";
 import { Priority, Study, StudyType, TaskCreationMethod, User } from "@/lib/types";
 import { Button, Card, ErrorBanner, Field, inputClass } from "@/components/ui";
 import { EditableTask, StudyTaskEditor } from "@/components/StudyTaskEditor";
+import { CURRENCIES } from "@/lib/currencies";
 
 interface StudyForm {
   studyName: string;
@@ -22,6 +23,7 @@ interface StudyForm {
   priority: Priority | "";
   originalStartDate: string;
   originalCompletionDate: string;
+  currency: string;
   likelyTotalRevenue: string;
   estimatedTotalExpenses: string;
 }
@@ -39,6 +41,7 @@ const EMPTY_FORM: StudyForm = {
   priority: "",
   originalStartDate: "",
   originalCompletionDate: "",
+  currency: "USD",
   likelyTotalRevenue: "",
   estimatedTotalExpenses: "",
 };
@@ -137,6 +140,7 @@ export default function CreateStudyPage() {
         priority: form.priority || undefined,
         originalStartDate: form.originalStartDate,
         originalCompletionDate: form.originalCompletionDate,
+        currency: form.currency,
         likelyTotalRevenue: form.likelyTotalRevenue ? Number(form.likelyTotalRevenue) : undefined,
         estimatedTotalExpenses: form.estimatedTotalExpenses ? Number(form.estimatedTotalExpenses) : undefined,
         taskCreationMethod: method,
@@ -281,7 +285,21 @@ export default function CreateStudyPage() {
                 onChange={(e) => setForm({ ...form, sponsorInfo: e.target.value })}
               />
             </Field>
-            <Field label="Likely Total Revenue">
+            <Field label="Currency">
+              <select
+                className={inputClass}
+                value={form.currency}
+                onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div />
+            <Field label={`Likely Total Revenue (${form.currency})`}>
               <input
                 type="number"
                 min={0}
@@ -290,7 +308,7 @@ export default function CreateStudyPage() {
                 onChange={(e) => setForm({ ...form, likelyTotalRevenue: e.target.value })}
               />
             </Field>
-            <Field label="Estimated Total Expenses">
+            <Field label={`Estimated Total Expenses (${form.currency})`}>
               <input
                 type="number"
                 min={0}

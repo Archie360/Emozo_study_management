@@ -143,6 +143,8 @@ model Study {
   originalCompletionDate        DateTime?   @map("original_completion_date") @db.Date
   previousOriginalCompletionDate      DateTime? @map("previous_original_completion_date") @db.Date
   originalCompletionDateChangeCount   Int    @default(0) @map("original_completion_date_change_count")
+  // Applies to both amounts below — a Study's financials are one currency.
+  currency                       String      @default("USD")
   // Likely total revenue / estimated total expenses: current + previous
   // value and a change counter, same "latest / last / how many times
   // changed" treatment as everything else that gets re-estimated over time.

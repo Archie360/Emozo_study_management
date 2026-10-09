@@ -18,9 +18,9 @@ export function formatScheduleVariance(days: number | null): string {
   return `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ahead`;
 }
 
-export function formatCurrency(value: string | null | undefined): string {
+export function formatCurrency(value: string | null | undefined, currency: string = "USD"): string {
   if (value === null || value === undefined) return "—";
   const n = Number(value);
   if (Number.isNaN(n)) return "—";
-  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return n.toLocaleString(undefined, { style: "currency", currency, maximumFractionDigits: 0 });
 }

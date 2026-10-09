@@ -59,6 +59,7 @@ interface CreateStudyInput {
   priority?: Priority;
   originalStartDate: Date;
   originalCompletionDate: Date;
+  currency?: string;
   likelyTotalRevenue?: number;
   estimatedTotalExpenses?: number;
   taskCreationMethod: TaskCreationMethod;
@@ -293,6 +294,7 @@ export async function createStudy(input: CreateStudyInput, userId: string) {
         taskCreationMethod: input.taskCreationMethod,
         originalStartDate: input.originalStartDate,
         originalCompletionDate: input.originalCompletionDate,
+        currency: input.currency,
         likelyTotalRevenue: input.likelyTotalRevenue,
         estimatedTotalExpenses: input.estimatedTotalExpenses,
         createdBy: userId,
@@ -649,7 +651,7 @@ export async function rebaselineStudy(
 // for the financial estimates collected when a Study is first proposed.
 export async function updateStudyEstimates(
   id: string,
-  input: { likelyTotalRevenue?: number; estimatedTotalExpenses?: number; version: number },
+  input: { currency?: string; likelyTotalRevenue?: number; estimatedTotalExpenses?: number; version: number },
   userId: string
 ) {
   const existing = await prisma.study.findUnique({ where: { id } });
@@ -669,6 +671,7 @@ export async function updateStudyEstimates(
     const updated = await tx.study.update({
       where: { id },
       data: {
+        currency: input.currency,
         likelyTotalRevenue: input.likelyTotalRevenue,
         previousTotalRevenue: revenueChanged ? existing.likelyTotalRevenue : undefined,
         totalRevenueChangeCount: revenueChanged ? { increment: 1 } : undefined,
@@ -685,10 +688,12 @@ export async function updateStudyEstimates(
       action: AuditAction.STUDY_UPDATED,
       userId,
       previousValue: {
+        currency: existing.currency,
         likelyTotalRevenue: existing.likelyTotalRevenue,
         estimatedTotalExpenses: existing.estimatedTotalExpenses,
       },
       newValue: {
+        currency: updated.currency,
         likelyTotalRevenue: updated.likelyTotalRevenue,
         estimatedTotalExpenses: updated.estimatedTotalExpenses,
       },

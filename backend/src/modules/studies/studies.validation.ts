@@ -1,7 +1,9 @@
 import { Priority, StudyStatus, TaskCreationMethod } from "@prisma/client";
 import { z } from "zod";
+import { CURRENCY_CODES } from "../../utils/currencies";
 
 const dateString = z.coerce.date();
+const currencyCode = z.enum(CURRENCY_CODES);
 
 const inlineTaskSchema = z.object({
   taskName: z.string().trim().min(1, "Task name is required."),
@@ -32,6 +34,7 @@ export const createStudySchema = z
     priority: z.nativeEnum(Priority).optional(),
     originalStartDate: dateString,
     originalCompletionDate: dateString,
+    currency: currencyCode.optional(),
     likelyTotalRevenue: z.number().nonnegative().optional(),
     estimatedTotalExpenses: z.number().nonnegative().optional(),
     taskCreationMethod: z.nativeEnum(TaskCreationMethod),
@@ -82,6 +85,7 @@ export const confirmStudySoldSchema = z.object({
 });
 
 export const updateStudyEstimatesSchema = z.object({
+  currency: currencyCode.optional(),
   likelyTotalRevenue: z.number().nonnegative().optional(),
   estimatedTotalExpenses: z.number().nonnegative().optional(),
   version: z.number().int(),
