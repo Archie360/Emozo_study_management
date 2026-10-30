@@ -2,9 +2,9 @@ import bcrypt from "bcryptjs";
 import { Prisma, User, UserRole } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { NotFoundError, ValidationError } from "../../utils/errors";
+import { checkPasswordStrength, PasswordCheckContext } from "../../utils/password-policy";
 
 const SALT_ROUNDS = 12;
-const MIN_PASSWORD_LENGTH = 8;
 
 // Never let a passwordHash leave this module — every function that returns
 // user data to a route handler goes through this first.
@@ -40,10 +40,17 @@ export async function getUserByEmail(email: string) {
   return prisma.user.findUnique({ where: { email } });
 }
 
-function assertValidPassword(password: string | undefined): asserts password is string {
-  if (!password || password.length < MIN_PASSWORD_LENGTH) {
-    throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, {
-      password: `Must be at least ${MIN_PASSWORD_LENGTH} characters`,
+function assertValidPassword(
+  password: string | undefined,
+  context: PasswordCheckContext = {}
+): asserts password is string {
+  if (!password) {
+    throw new ValidationError("Password is required.", { password: "Required" });
+  }
+  const problems = checkPasswordStrength(password, context);
+  if (problems.length > 0) {
+    throw new ValidationError("Password does not meet the strength requirements.", {
+      password: problems.join("; "),
     });
   }
 }
@@ -51,7 +58,7 @@ function assertValidPassword(password: string | undefined): asserts password is 
 export async function createUser(input: { email: string; name: string; password?: string; role?: UserRole }) {
   if (!input.email) throw new ValidationError("Email is required.", { email: "Required" });
   if (!input.name) throw new ValidationError("Name is required.", { name: "Required" });
-  assertValidPassword(input.password);
+  assertValidPassword(input.password, { email: input.email, name: input.name });
 
   const existing = await getUserByEmail(input.email);
   if (existing) throw new ValidationError("A user with this email already exists.", { email: "Already in use" });
@@ -91,8 +98,8 @@ export async function updateUser(id: string, input: { name?: string; email?: str
 }
 
 export async function resetUserPassword(id: string, password: string) {
-  await getUser(id);
-  assertValidPassword(password);
+  const existing = await getUser(id);
+  assertValidPassword(password, { email: existing.email, name: existing.name });
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const user = await prisma.user.update({ where: { id }, data: { passwordHash } });
   return sanitizeUser(user);

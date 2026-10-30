@@ -257,7 +257,7 @@ function ResetPasswordModal({
           className={inputClass}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 8 characters"
+          placeholder="At least 10 characters, mixed case, a number, a symbol"
         />
       </Field>
       <div className="mt-6 flex justify-end gap-2">
@@ -364,7 +364,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
             className={inputClass}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 8 characters"
+            placeholder="At least 10 characters, mixed case, a number, a symbol"
           />
         </Field>
         <Field label="Role">
