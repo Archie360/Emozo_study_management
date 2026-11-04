@@ -47,10 +47,10 @@ export default function StudyTypesPage() {
   return (
     <AuthGate>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Study Types</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Study Templates</h1>
         {isAdmin && (
           <Link href="/study-types/new" className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">
-            New Study Type
+            New Study Template
           </Link>
         )}
       </div>

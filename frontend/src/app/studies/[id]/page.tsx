@@ -107,7 +107,7 @@ export default function StudyDetailPage() {
               Add Task
             </Button>
             <Button variant="secondary" onClick={() => setModal({ type: "saveAsType" })}>
-              Save as Study Type
+              Save as Study Template
             </Button>
           </div>
         </div>
@@ -313,7 +313,7 @@ export default function StudyDetailPage() {
           onClose={() => setModal({ type: "none" })}
           onSaved={(newTypeId) => {
             setModal({ type: "none" });
-            setToast("Study Type created.");
+            setToast("Study Template created.");
             router.push(`/study-types/${newTypeId}`);
           }}
         />
@@ -714,13 +714,13 @@ function SaveAsTypeModal({
   }
 
   return (
-    <Modal open title="Save Task Structure as Study Type" onClose={onClose}>
+    <Modal open title="Save Task Structure as Study Template" onClose={onClose}>
       <ErrorBanner message={error} />
       <p className="mb-4 text-xs text-gray-500">
         Spec 44: only task name, description and sequence are copied — no dates, status or history.
       </p>
       <div className="space-y-4">
-        <Field label="New Study Type Name *">
+        <Field label="New Study Template Name *">
           <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <Field label="Description">

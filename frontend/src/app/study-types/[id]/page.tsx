@@ -25,7 +25,7 @@ export default function StudyTypeEditPage() {
   }
 
   if (loading) return <AuthGate><p className="text-sm text-gray-500">Loading…</p></AuthGate>;
-  if (error || !studyType) return <AuthGate><ErrorBanner message={error ?? "Study Type not found."} /></AuthGate>;
+  if (error || !studyType) return <AuthGate><ErrorBanner message={error ?? "Study Template not found."} /></AuthGate>;
 
   const isArchived = studyType.status === "ARCHIVED";
   const tasks = [...(studyType.tasks ?? [])].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
@@ -44,12 +44,12 @@ export default function StudyTypeEditPage() {
 
       {isArchived && (
         <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          Archived Study Types cannot be edited. They remain visible for reference; existing Studies
+          Archived Study Templates cannot be edited. They remain visible for reference; existing Studies
           created from them are unaffected (spec 5, 47).
         </div>
       )}
 
-      <NameDescriptionForm studyType={studyType} disabled={isArchived} onSaved={() => notify("Study Type updated.")} />
+      <NameDescriptionForm studyType={studyType} disabled={isArchived} onSaved={() => notify("Study Template updated.")} />
 
       <h2 className="mb-2 mt-8 text-sm font-semibold text-gray-700">Tasks</h2>
       <div className="space-y-2">

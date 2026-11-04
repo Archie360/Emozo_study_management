@@ -40,7 +40,7 @@ export default function NewStudyTypePage() {
         setError(err.message);
         setFieldErrors(err.fields ?? {});
       } else {
-        setError("Failed to create Study Type.");
+        setError("Failed to create Study Template.");
       }
     } finally {
       setSubmitting(false);
@@ -49,7 +49,7 @@ export default function NewStudyTypePage() {
 
   return (
     <AuthGate>
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">New Study Type</h1>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900">New Study Template</h1>
       <Card className="max-w-3xl p-6">
         <ErrorBanner message={error} />
         <div className="grid grid-cols-2 gap-4">
@@ -68,7 +68,7 @@ export default function NewStudyTypePage() {
 
         <div className="mt-6 flex justify-end">
           <Button onClick={handleSubmit} disabled={submitting || !name}>
-            {submitting ? "Creating…" : "Create Study Type"}
+            {submitting ? "Creating…" : "Create Study Template"}
           </Button>
         </div>
       </Card>

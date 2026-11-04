@@ -45,7 +45,7 @@ export default function StudiesListPage() {
             href="/study-types"
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Study Types
+            Study Templates
           </Link>
           <Link href="/studies/new" className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">
             Create Study
