@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AuthGate } from "@/components/AuthGate";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { api, toQuery } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { Study, StudyStatus, Paginated } from "@/lib/types";
@@ -38,6 +39,7 @@ export default function StudiesListPage() {
 
   return (
     <AuthGate>
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Studies" }]} />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Studies</h1>
         <div className="flex gap-2">

@@ -10,6 +10,7 @@ import { Study, StudyStatus, Task, TaskStatus } from "@/lib/types";
 import { formatCurrency, formatDate, formatScheduleVariance, toInputDate } from "@/lib/format";
 import { StudyStatusBadge, TaskStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Button, Card, ErrorBanner, Field, inputClass, Modal, ProgressBar, SuccessToast } from "@/components/ui";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CURRENCIES } from "@/lib/currencies";
 
 // PROPOSED -> CONFIRMED_SOLD only happens through the "Confirm as Sold" flow
@@ -74,6 +75,13 @@ export default function StudyDetailPage() {
 
   return (
     <AuthGate>
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Studies", href: "/studies" },
+          { label: study.studyName },
+        ]}
+      />
       <SuccessToast message={toast} />
 
       {/* Study Header — spec 31 */}

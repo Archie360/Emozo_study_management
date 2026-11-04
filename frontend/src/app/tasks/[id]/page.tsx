@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { api } from "@/lib/api";
@@ -9,6 +8,7 @@ import { Task, TaskDateHistoryEntry, TaskStatusHistoryEntry, Study } from "@/lib
 import { formatDate } from "@/lib/format";
 import { TaskStatusBadge } from "@/components/Badge";
 import { Card, ErrorBanner } from "@/components/ui";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 type TaskDetail = Task & { study: Study };
 
@@ -31,11 +31,16 @@ export default function TaskDetailPage() {
 
   return (
     <AuthGate>
-      <Link href={`/studies/${task.study.id}`} className="text-sm text-gray-500 hover:underline">
-        ← {task.study.studyName}
-      </Link>
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Studies", href: "/studies" },
+          { label: task.study.studyName, href: `/studies/${task.study.id}` },
+          { label: task.taskName },
+        ]}
+      />
 
-      <Card className="mt-3 mb-6 p-6">
+      <Card className="mb-6 p-6">
         <div className="mb-1 flex items-center gap-2">
           <h1 className="text-xl font-semibold text-gray-900">{task.taskName}</h1>
           <TaskStatusBadge status={task.status} />

@@ -76,36 +76,38 @@ export function StudyTaskEditor({
               ▼
             </button>
           </div>
-          <div className="grid flex-1 grid-cols-12 gap-2">
+          <div className="flex-1 space-y-2">
+            <div className="grid grid-cols-12 gap-2">
+              <input
+                className={`${inputClass} col-span-2`}
+                placeholder="Group"
+                value={task.groupName}
+                onChange={(e) => update(task.tempId, { groupName: e.target.value })}
+              />
+              <input
+                className={`${inputClass} col-span-4`}
+                placeholder="Task name"
+                value={task.taskName}
+                onChange={(e) => update(task.tempId, { taskName: e.target.value })}
+              />
+              <input
+                type="date"
+                className={`${inputClass} col-span-3`}
+                value={task.startDate}
+                onChange={(e) => update(task.tempId, { startDate: e.target.value })}
+              />
+              <input
+                type="date"
+                className={`${inputClass} col-span-3`}
+                value={task.endDate}
+                onChange={(e) => update(task.tempId, { endDate: e.target.value })}
+              />
+            </div>
             <input
-              className={`${inputClass} col-span-2`}
-              placeholder="Group"
-              value={task.groupName}
-              onChange={(e) => update(task.tempId, { groupName: e.target.value })}
-            />
-            <input
-              className={`${inputClass} col-span-3`}
-              placeholder="Task name"
-              value={task.taskName}
-              onChange={(e) => update(task.tempId, { taskName: e.target.value })}
-            />
-            <input
-              className={`${inputClass} col-span-3`}
+              className={`${inputClass} w-full`}
               placeholder="Description (optional)"
               value={task.description}
               onChange={(e) => update(task.tempId, { description: e.target.value })}
-            />
-            <input
-              type="date"
-              className={`${inputClass} col-span-2`}
-              value={task.startDate}
-              onChange={(e) => update(task.tempId, { startDate: e.target.value })}
-            />
-            <input
-              type="date"
-              className={`${inputClass} col-span-2`}
-              value={task.endDate}
-              onChange={(e) => update(task.tempId, { endDate: e.target.value })}
             />
           </div>
           <button

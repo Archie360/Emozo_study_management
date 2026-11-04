@@ -12,12 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* No dark-mode variant of the UI exists — every component is hardcoded
+   light (white cards, gray-200 borders, etc). A prefers-color-scheme
+   override here would only flip this fallback color, leaving any text that
+   relies on it unreadable against the still-white component backgrounds. */
 
 body {
   background: var(--background);

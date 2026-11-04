@@ -6,7 +6,8 @@ import { AuthGate } from "@/components/AuthGate";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { Priority, Study, StudyType, TaskCreationMethod, User } from "@/lib/types";
-import { Button, Card, ErrorBanner, Field, inputClass } from "@/components/ui";
+import { Button, Card, ErrorBanner, Field, inputClass, Modal } from "@/components/ui";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { EditableTask, StudyTaskEditor } from "@/components/StudyTaskEditor";
 import { CURRENCIES } from "@/lib/currencies";
 
@@ -122,6 +123,8 @@ export default function CreateStudyPage() {
     }
   }
 
+  const [confirming, setConfirming] = useState(false);
+
   async function handleSubmit() {
     setError(null);
     setFieldErrors({});
@@ -177,6 +180,9 @@ export default function CreateStudyPage() {
 
   return (
     <AuthGate>
+      <Breadcrumbs
+        items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Studies", href: "/studies" }, { label: "Create Study" }]}
+      />
       <h1 className="mb-1 text-xl font-semibold text-gray-900">Create Study</h1>
       <p className="mb-6 text-sm text-gray-500">
         Step {step} of 2 — {step === 1 ? "Define the Study" : "Choose how to build its Tasks"}
@@ -194,13 +200,13 @@ export default function CreateStudyPage() {
                 onChange={(e) => setForm({ ...form, studyName: e.target.value })}
               />
             </Field>
-            <Field label="Project Type *" error={fieldErrors.studyTypeId}>
+            <Field label="Study Type *" error={fieldErrors.studyTypeId}>
               <select
                 className={inputClass}
                 value={form.studyTypeId}
                 onChange={(e) => setForm({ ...form, studyTypeId: e.target.value })}
               >
-                <option value="">Select Project Type…</option>
+                <option value="">Select Study Type…</option>
                 {studyTypes?.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -372,7 +378,7 @@ export default function CreateStudyPage() {
                           </div>
                         )}
                         <div className="flex items-center justify-between px-3 py-2 text-sm">
-                          <span>
+                          <span className="text-gray-900">
                             {t.sequenceNumber}. {t.taskName}
                             {t.isFixed && <span className="ml-2 text-xs text-gray-400">Fixed</span>}
                           </span>
@@ -398,12 +404,41 @@ export default function CreateStudyPage() {
             <Button variant="secondary" onClick={() => setStep(1)}>
               Back
             </Button>
-            <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
-              {submitting ? "Creating…" : "Create Study"}
+            <Button onClick={() => setConfirming(true)} disabled={!canSubmit || submitting}>
+              Create Study
             </Button>
           </div>
         </Card>
       )}
+
+      {confirming && (
+        <Modal open title="Create this Study?" onClose={() => setConfirming(false)}>
+          <ErrorBanner message={error} />
+          <p className="text-sm text-gray-600">
+            This creates <strong>{form.studyName || "(untitled)"}</strong>
+            {selectedStudyType && (
+              <>
+                {" "}
+                under <strong>{selectedStudyType.name}</strong>
+              </>
+            )}
+            , owned by <strong>{users?.find((u) => u.id === form.ownerUserId)?.name ?? "—"}</strong>, running{" "}
+            {form.originalStartDate || "—"} to {form.originalCompletionDate || "—"}.
+            {method === "STUDY_TYPE_AS_IS"
+              ? " Its first task group will be created now; the rest follow once it's confirmed as sold."
+              : ` It will be created with ${tasks.length} task(s).`}
+          </p>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "Creating…" : "Create Study"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
     </AuthGate>
   );
 }

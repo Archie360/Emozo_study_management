@@ -73,32 +73,34 @@ export function StudyTypeTaskEditor({
               ▼
             </button>
           </div>
-          <div className="grid flex-1 grid-cols-12 gap-2">
+          <div className="flex-1 space-y-2">
+            <div className="grid grid-cols-12 gap-2">
+              <input
+                className={`${inputClass} col-span-3`}
+                placeholder="Group (optional)"
+                value={task.groupName}
+                onChange={(e) => update(task.tempId, { groupName: e.target.value })}
+              />
+              <input
+                className={`${inputClass} col-span-7`}
+                placeholder="Task name"
+                value={task.taskName}
+                onChange={(e) => update(task.tempId, { taskName: e.target.value })}
+              />
+              <input
+                type="number"
+                min={1}
+                className={`${inputClass} col-span-2`}
+                placeholder="Days"
+                value={task.defaultDurationDays}
+                onChange={(e) => update(task.tempId, { defaultDurationDays: e.target.value })}
+              />
+            </div>
             <input
-              className={`${inputClass} col-span-3`}
-              placeholder="Group (optional)"
-              value={task.groupName}
-              onChange={(e) => update(task.tempId, { groupName: e.target.value })}
-            />
-            <input
-              className={`${inputClass} col-span-4`}
-              placeholder="Task name"
-              value={task.taskName}
-              onChange={(e) => update(task.tempId, { taskName: e.target.value })}
-            />
-            <input
-              className={`${inputClass} col-span-3`}
+              className={`${inputClass} w-full`}
               placeholder="Description (optional)"
               value={task.description}
               onChange={(e) => update(task.tempId, { description: e.target.value })}
-            />
-            <input
-              type="number"
-              min={1}
-              className={`${inputClass} col-span-2`}
-              placeholder="Days"
-              value={task.defaultDurationDays}
-              onChange={(e) => update(task.tempId, { defaultDurationDays: e.target.value })}
             />
           </div>
           <label className="flex items-center gap-1 pt-1.5 text-xs text-gray-500" title="Cannot be marked Not Applicable">
