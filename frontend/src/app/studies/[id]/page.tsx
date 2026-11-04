@@ -14,6 +14,15 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { NoteIcon, TaskComments } from "@/components/TaskComments";
 import { CURRENCIES } from "@/lib/currencies";
 
+// Opens the viewer's own email client with a draft addressed to the Study's
+// owner — no backend involved, since it's composed and sent by the user,
+// not the app.
+function mailtoHref(study: Study): string {
+  const subject = `Study: ${study.studyName}`;
+  const body = `Hi ${study.owner.name},\n\n`;
+  return `mailto:${encodeURIComponent(study.owner.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 // PROPOSED -> CONFIRMED_SOLD only happens through the "Confirm as Sold" flow
 // below (it needs a task-creation method), so it's absent here.
 const STUDY_STATUS_OPTIONS: Record<StudyStatus, StudyStatus[]> = {
@@ -104,6 +113,12 @@ export default function StudyDetailPage() {
             {study.status === "PROPOSED" && (
               <Button onClick={() => setModal({ type: "confirmSold" })}>Confirm as Sold</Button>
             )}
+            <a
+              href={mailtoHref(study)}
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              Send Email
+            </a>
             <Button variant="secondary" onClick={() => setModal({ type: "editStudy" })}>
               Edit Study
             </Button>
