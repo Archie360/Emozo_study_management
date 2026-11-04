@@ -30,11 +30,20 @@ describe("formatDateTime", () => {
     expect(formatDateTime("not-a-date")).toBe("—");
   });
 
-  it("renders a valid ISO timestamp with date and time", () => {
-    const result = formatDateTime("2026-03-15T14:30:00.000Z");
+  it("renders a valid ISO timestamp with date, time down to the second, and a UTC label", () => {
+    const result = formatDateTime("2026-03-15T14:30:05.000Z");
     expect(result).toContain("2026");
     expect(result).toMatch(/Mar/i);
-    expect(result).toMatch(/\d{1,2}:\d{2}/);
+    expect(result).toMatch(/14:30:05/);
+    expect(result).toMatch(/UTC$/);
+  });
+
+  it("renders the UTC wall-clock time regardless of the viewer's local timezone", () => {
+    // 23:00 UTC stays "23:00:00 UTC" even though it'd roll to the next day
+    // in timezones ahead of UTC — this is the whole point of fixing to UTC.
+    const result = formatDateTime("2026-03-15T23:00:00.000Z");
+    expect(result).toMatch(/23:00:00 UTC$/);
+    expect(result).toContain("Mar 15, 2026");
   });
 });
 

@@ -6,17 +6,28 @@ export function formatDate(value: string | null | undefined): string {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+// Full precision, fixed to UTC — unlike formatDate (display-only, user
+// locale), a history timestamp needs to read the same regardless of the
+// viewer's timezone and down to the second, since two log entries can land
+// in the same minute.
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
+  const date = d.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    timeZone: "UTC",
   });
+  const time = d.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  });
+  return `${date}, ${time} UTC`;
 }
 
 export function toInputDate(value: string | null | undefined): string {
