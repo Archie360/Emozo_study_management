@@ -6,11 +6,12 @@ import { useParams, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { Study, StudyStatus, Task, TaskStatus } from "@/lib/types";
+import { Study, StudyStatus, Task, TaskComment, TaskStatus } from "@/lib/types";
 import { formatCurrency, formatDate, formatScheduleVariance, toInputDate } from "@/lib/format";
 import { StudyStatusBadge, TaskStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Button, Card, ErrorBanner, Field, inputClass, Modal, ProgressBar, SuccessToast } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { NoteIcon, TaskComments } from "@/components/TaskComments";
 import { CURRENCIES } from "@/lib/currencies";
 
 // PROPOSED -> CONFIRMED_SOLD only happens through the "Confirm as Sold" flow
@@ -41,6 +42,7 @@ type ModalState =
   | { type: "editTask"; task: Task }
   | { type: "changeTaskStatus"; task: Task }
   | { type: "deleteTask"; task: Task }
+  | { type: "taskComments"; task: Task }
   | { type: "markSelectedNotApplicable" };
 
 export default function StudyDetailPage() {
@@ -251,9 +253,19 @@ export default function StudyDetailPage() {
                 </td>
                 <td className="px-4 py-3 text-gray-500">{task.sequenceNumber}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">
-                  <Link href={`/tasks/${task.id}`} className="hover:underline">
-                    {task.taskName}
-                  </Link>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Link href={`/tasks/${task.id}`} className="hover:underline">
+                      {task.taskName}
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setModal({ type: "taskComments", task })}
+                      className="text-gray-400 hover:text-gray-700"
+                      title="Notes"
+                    >
+                      <NoteIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
                   {task.isFixed && <span className="ml-2 text-xs font-normal text-gray-400">Fixed</span>}
                 </td>
                 <td className="px-4 py-3">
@@ -335,7 +347,22 @@ export default function StudyDetailPage() {
       {modal.type === "deleteTask" && (
         <DeleteTaskModal task={modal.task} onClose={() => setModal({ type: "none" })} onSaved={closeAndReload} />
       )}
+      {modal.type === "taskComments" && (
+        <TaskCommentsModal task={modal.task} onClose={() => setModal({ type: "none" })} />
+      )}
     </AuthGate>
+  );
+}
+
+// Opens in place over the Study page — no navigation to the Task Detail
+// page, unlike the "History" link beside it.
+function TaskCommentsModal({ task, onClose }: { task: Task; onClose: () => void }) {
+  const { data: comments, reload } = useApi<TaskComment[]>(() => api.get(`/tasks/${task.id}/comments`), [task.id]);
+
+  return (
+    <Modal open title={`Notes — ${task.taskName}`} onClose={onClose}>
+      <TaskComments taskId={task.id} comments={comments ?? []} onChange={reload} />
+    </Modal>
   );
 }
 
