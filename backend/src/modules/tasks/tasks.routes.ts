@@ -17,6 +17,8 @@ import {
   updateTaskSchema,
 } from "./tasks.validation";
 import { getTaskDateHistory, getTaskStatusHistory } from "../taskHistory/taskHistory.service";
+import { addTaskComment, deleteTaskComment, listTaskComments } from "../taskComments/taskComments.service";
+import { ValidationError } from "../../utils/errors";
 
 export const tasksRouter = Router();
 
@@ -99,6 +101,33 @@ function taskScopedRoutes() {
     "/tasks/:id/status-history",
     asyncHandler(async (req, res) => {
       res.json(await getTaskStatusHistory(req.params.id));
+    })
+  );
+
+  // Notes/comments on a Task — open-ended, unlike the system-generated
+  // date/status history above.
+  tasksRouter.get(
+    "/tasks/:id/comments",
+    asyncHandler(async (req, res) => {
+      res.json(await listTaskComments(req.params.id));
+    })
+  );
+
+  tasksRouter.post(
+    "/tasks/:id/comments",
+    asyncHandler(async (req, res) => {
+      const { body } = req.body as { body?: string };
+      if (!body) throw new ValidationError("Comment is required.", { body: "Required" });
+      const comment = await addTaskComment(req.params.id, body, req.user!.id);
+      res.status(201).json(comment);
+    })
+  );
+
+  tasksRouter.delete(
+    "/tasks/:id/comments/:commentId",
+    asyncHandler(async (req, res) => {
+      await deleteTaskComment(req.params.id, req.params.commentId, req.user!.id, req.user!.role);
+      res.status(204).send();
     })
   );
 }

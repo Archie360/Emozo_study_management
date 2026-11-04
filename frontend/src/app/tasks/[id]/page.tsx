@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { Task, TaskDateHistoryEntry, TaskStatusHistoryEntry, Study } from "@/lib/types";
-import { formatDate } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
+import { Task, TaskComment, TaskDateHistoryEntry, TaskStatusHistoryEntry, Study } from "@/lib/types";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { TaskStatusBadge } from "@/components/Badge";
-import { Card, ErrorBanner } from "@/components/ui";
+import { Button, Card, ErrorBanner, inputClass } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 type TaskDetail = Task & { study: Study };
@@ -23,6 +25,10 @@ export default function TaskDetailPage() {
   );
   const { data: statusHistory } = useApi<TaskStatusHistoryEntry[]>(
     () => api.get(`/tasks/${id}/status-history`),
+    [id]
+  );
+  const { data: comments, reload: reloadComments } = useApi<TaskComment[]>(
+    () => api.get(`/tasks/${id}/comments`),
     [id]
   );
 
@@ -134,7 +140,99 @@ export default function TaskDetailPage() {
           </Card>
         </div>
       </div>
+
+      <div className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold text-gray-700">Notes</h2>
+        <TaskComments taskId={task.id} comments={comments ?? []} onChange={reloadComments} />
+      </div>
     </AuthGate>
+  );
+}
+
+function TaskComments({
+  taskId,
+  comments,
+  onChange,
+}: {
+  taskId: string;
+  comments: TaskComment[];
+  onChange: () => void;
+}) {
+  const { user } = useAuth();
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function addComment() {
+    if (!body.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.post(`/tasks/${taskId}/comments`, { body });
+      setBody("");
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to add note.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function removeComment(commentId: string) {
+    setDeletingId(commentId);
+    setError(null);
+    try {
+      await api.delete(`/tasks/${taskId}/comments/${commentId}`);
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to delete note.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <Card className="p-4">
+      <ErrorBanner message={error} />
+      {comments.length === 0 && <p className="text-sm text-gray-400">No notes yet.</p>}
+      <ul className="space-y-3">
+        {comments.map((c) => (
+          <li key={c.id} className="rounded-md border border-gray-100 bg-gray-50 p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-900">{c.author.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{formatDateTime(c.createdAt)}</span>
+                {(user?.id === c.authorId || user?.role === "ADMIN") && (
+                  <button
+                    onClick={() => removeComment(c.id)}
+                    disabled={deletingId === c.id}
+                    className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50"
+                    title="Delete note"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="whitespace-pre-wrap text-sm text-gray-700">{c.body}</p>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-4 flex gap-2">
+        <textarea
+          className={`${inputClass} min-h-[2.5rem] flex-1`}
+          placeholder="Add a note…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={2}
+        />
+        <Button onClick={addComment} disabled={submitting || !body.trim()}>
+          {submitting ? "Posting…" : "Post"}
+        </Button>
+      </div>
+    </Card>
   );
 }
 

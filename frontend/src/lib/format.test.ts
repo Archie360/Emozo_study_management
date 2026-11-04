@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCurrency, formatDate, formatScheduleVariance, toInputDate } from "./format";
+import { formatCurrency, formatDate, formatDateTime, formatScheduleVariance, toInputDate } from "./format";
 
 describe("formatDate", () => {
   it("renders a falsy value as an em dash", () => {
@@ -16,6 +16,25 @@ describe("formatDate", () => {
     const result = formatDate("2026-03-15T00:00:00.000Z");
     expect(result).toContain("2026");
     expect(result).toMatch(/Mar/i);
+  });
+});
+
+describe("formatDateTime", () => {
+  it("renders a falsy value as an em dash", () => {
+    expect(formatDateTime(null)).toBe("—");
+    expect(formatDateTime(undefined)).toBe("—");
+    expect(formatDateTime("")).toBe("—");
+  });
+
+  it("renders an unparseable string as an em dash", () => {
+    expect(formatDateTime("not-a-date")).toBe("—");
+  });
+
+  it("renders a valid ISO timestamp with date and time", () => {
+    const result = formatDateTime("2026-03-15T14:30:00.000Z");
+    expect(result).toContain("2026");
+    expect(result).toMatch(/Mar/i);
+    expect(result).toMatch(/\d{1,2}:\d{2}/);
   });
 });
 

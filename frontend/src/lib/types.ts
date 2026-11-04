@@ -56,6 +56,15 @@ export interface Task {
   previousEndDate?: string | null;
 }
 
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  author: User;
+}
+
 export interface TaskDateHistoryEntry {
   id: string;
   taskId: string;

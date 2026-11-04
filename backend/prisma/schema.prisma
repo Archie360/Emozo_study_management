@@ -73,6 +73,7 @@ model User {
   dateHistoryChanges   TaskDateHistory[]
   statusHistoryChanges TaskStatusHistory[]
   auditLogs            AuditLog[]
+  taskComments         TaskComment[]
 
   @@map("users")
 }
@@ -209,10 +210,28 @@ model Task {
 
   dateHistory   TaskDateHistory[]
   statusHistory TaskStatusHistory[]
+  comments      TaskComment[]
 
   @@index([studyId])
   @@index([status])
   @@map("tasks")
+}
+
+// Free-text notes on a Task, separate from its (system-generated) date/
+// status history — a place for people to leave context a status change
+// can't carry. Hard-deletable (unlike Tasks) since a comment has no
+// execution history depending on it.
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([taskId])
+  @@map("task_comments")
 }
 
 // 8. TASK Date History
