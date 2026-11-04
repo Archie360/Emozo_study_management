@@ -115,6 +115,8 @@ export default function StudyDetailPage() {
             )}
             <a
               href={mailtoHref(study)}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               Send Email
