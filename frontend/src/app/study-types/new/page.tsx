@@ -6,13 +6,13 @@ import { AuthGate } from "@/components/AuthGate";
 import { api, ApiError } from "@/lib/api";
 import { StudyType } from "@/lib/types";
 import { Button, Card, ErrorBanner, Field, inputClass } from "@/components/ui";
-import { EditableStudyTypeTask, StudyTypeTaskEditor } from "@/components/StudyTypeTaskEditor";
+import { EditableStudyTypeTaskGroup, StudyTypeTaskEditor } from "@/components/StudyTypeTaskEditor";
 
 export default function NewStudyTypePage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [tasks, setTasks] = useState<EditableStudyTypeTask[]>([]);
+  const [taskGroups, setTaskGroups] = useState<EditableStudyTypeTaskGroup[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -25,14 +25,17 @@ export default function NewStudyTypePage() {
       const studyType = await api.post<StudyType>("/study-types", {
         name,
         description: description || undefined,
-        tasks: tasks.map((t, i) => ({
-          taskName: t.taskName,
-          description: t.description || undefined,
-          groupName: t.groupName || undefined,
-          sequenceNumber: i + 1,
-          defaultDurationDays: t.defaultDurationDays ? Number(t.defaultDurationDays) : undefined,
-          isFixed: t.isFixed,
-        })),
+        tasks: taskGroups
+          .flatMap((g) =>
+            g.tasks.map((t) => ({
+              taskName: t.taskName,
+              description: t.description || undefined,
+              groupName: g.groupName || undefined,
+              defaultDurationDays: t.defaultDurationDays ? Number(t.defaultDurationDays) : undefined,
+              isFixed: t.isFixed,
+            }))
+          )
+          .map((t, i) => ({ ...t, sequenceNumber: i + 1 })),
       });
       router.push(`/study-types/${studyType.id}`);
     } catch (err) {
@@ -63,7 +66,7 @@ export default function NewStudyTypePage() {
 
         <div className="mt-6">
           <p className="mb-2 text-sm font-medium text-gray-700">Tasks</p>
-          <StudyTypeTaskEditor tasks={tasks} onChange={setTasks} />
+          <StudyTypeTaskEditor groups={taskGroups} onChange={setTaskGroups} />
         </div>
 
         <div className="mt-6 flex justify-end">

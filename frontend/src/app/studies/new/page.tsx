@@ -8,7 +8,7 @@ import { useApi } from "@/lib/useApi";
 import { Priority, Study, StudyType, TaskCreationMethod, User } from "@/lib/types";
 import { Button, Card, ErrorBanner, Field, inputClass, Modal } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { EditableTask, StudyTaskEditor } from "@/components/StudyTaskEditor";
+import { EditableTaskGroup, StudyTaskEditor } from "@/components/StudyTaskEditor";
 import { CURRENCIES } from "@/lib/currencies";
 
 interface StudyForm {
@@ -49,28 +49,35 @@ const EMPTY_FORM: StudyForm = {
 
 // Chains dates sequentially from the study's start date using each template
 // task's default_duration_days — same algorithm the backend uses when
-// copying a Study Type as-is.
-function seedTasksFromStudyType(studyType: StudyType, startDate: string): EditableTask[] {
+// copying a Study Type as-is. Consecutive tasks sharing a groupName are
+// chunked into the same group block.
+function seedGroupsFromStudyType(studyType: StudyType, startDate: string): EditableTaskGroup[] {
   if (!startDate || !studyType.tasks) return [];
   let cursor = new Date(startDate);
-  return [...studyType.tasks]
-    .sort((a, b) => a.sequenceNumber - b.sequenceNumber)
-    .map((t) => {
-      const duration = t.defaultDurationDays ?? 1;
-      const start = new Date(cursor);
-      const end = new Date(cursor);
-      end.setDate(end.getDate() + Math.max(duration - 1, 0));
-      cursor = new Date(end);
-      cursor.setDate(cursor.getDate() + 1);
-      return {
-        tempId: crypto.randomUUID(),
-        taskName: t.taskName,
-        description: t.description ?? "",
-        groupName: t.groupName ?? "",
-        startDate: start.toISOString().slice(0, 10),
-        endDate: end.toISOString().slice(0, 10),
-      };
+  const groups: EditableTaskGroup[] = [];
+  for (const t of [...studyType.tasks].sort((a, b) => a.sequenceNumber - b.sequenceNumber)) {
+    const duration = t.defaultDurationDays ?? 1;
+    const start = new Date(cursor);
+    const end = new Date(cursor);
+    end.setDate(end.getDate() + Math.max(duration - 1, 0));
+    cursor = new Date(end);
+    cursor.setDate(cursor.getDate() + 1);
+
+    const groupName = t.groupName ?? "";
+    let group = groups[groups.length - 1];
+    if (!group || group.groupName !== groupName) {
+      group = { groupId: crypto.randomUUID(), groupName, tasks: [] };
+      groups.push(group);
+    }
+    group.tasks.push({
+      tempId: crypto.randomUUID(),
+      taskName: t.taskName,
+      description: t.description ?? "",
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
     });
+  }
+  return groups;
 }
 
 // A Study is defined first (status PROPOSED). The task-creation method is
@@ -83,7 +90,7 @@ export default function CreateStudyPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<StudyForm>(EMPTY_FORM);
   const [method, setMethod] = useState<TaskCreationMethod>("STUDY_TYPE_AS_IS");
-  const [tasks, setTasks] = useState<EditableTask[]>([]);
+  const [taskGroups, setTaskGroups] = useState<EditableTaskGroup[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -117,9 +124,9 @@ export default function CreateStudyPage() {
   function selectMethod(value: TaskCreationMethod) {
     setMethod(value);
     if (value === "MODIFIED_TEMPLATE" && selectedStudyType) {
-      setTasks(seedTasksFromStudyType(selectedStudyType, form.originalStartDate));
+      setTaskGroups(seedGroupsFromStudyType(selectedStudyType, form.originalStartDate));
     } else if (value === "FROM_SCRATCH") {
-      setTasks([]);
+      setTaskGroups([]);
     }
   }
 
@@ -150,14 +157,15 @@ export default function CreateStudyPage() {
         tasks:
           method === "STUDY_TYPE_AS_IS"
             ? undefined
-            : tasks.map((t, i) => ({
-                taskName: t.taskName,
-                description: t.description || undefined,
-                groupName: t.groupName || undefined,
-                startDate: t.startDate,
-                endDate: t.endDate,
-                sequenceNumber: i + 1,
-              })),
+            : taskGroups.flatMap((g) =>
+                g.tasks.map((t) => ({
+                  taskName: t.taskName,
+                  description: t.description || undefined,
+                  groupName: g.groupName || undefined,
+                  startDate: t.startDate,
+                  endDate: t.endDate,
+                }))
+              ).map((t, i) => ({ ...t, sequenceNumber: i + 1 })),
       };
       const study = await api.post<Study>("/studies", payload);
       router.push(`/studies/${study.id}`);
@@ -173,10 +181,11 @@ export default function CreateStudyPage() {
     }
   }
 
+  const allTasks = taskGroups.flatMap((g) => g.tasks);
   const canSubmit =
     method === "STUDY_TYPE_AS_IS"
       ? true
-      : tasks.length > 0 && tasks.every((t) => t.taskName && t.startDate && t.endDate);
+      : allTasks.length > 0 && allTasks.every((t) => t.taskName && t.startDate && t.endDate);
 
   return (
     <AuthGate>
@@ -396,7 +405,7 @@ export default function CreateStudyPage() {
               <p className="mb-2 text-sm font-medium text-gray-700">
                 Tasks (all created now — there&apos;s no separate confirm-sold step for these)
               </p>
-              <StudyTaskEditor tasks={tasks} onChange={setTasks} />
+              <StudyTaskEditor groups={taskGroups} onChange={setTaskGroups} />
             </div>
           )}
 
@@ -426,7 +435,7 @@ export default function CreateStudyPage() {
             {form.originalStartDate || "—"} to {form.originalCompletionDate || "—"}.
             {method === "STUDY_TYPE_AS_IS"
               ? " Its first task group will be created now; the rest follow once it's confirmed as sold."
-              : ` It will be created with ${tasks.length} task(s).`}
+              : ` It will be created with ${allTasks.length} task(s).`}
           </p>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setConfirming(false)}>
