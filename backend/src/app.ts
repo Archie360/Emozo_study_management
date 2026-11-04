@@ -9,6 +9,7 @@ import { studiesRouter } from "./modules/studies/studies.routes";
 import { studyTypesRouter } from "./modules/studyTypes/studyTypes.routes";
 import { tasksRouter } from "./modules/tasks/tasks.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
+import { attachmentsRouter } from "./modules/attachments/attachments.routes";
 
 export function createApp() {
   const app = express();
@@ -27,7 +28,15 @@ export function createApp() {
 
   // Spec 50-51: every other route requires an authenticated user; specific
   // routes layer `requireRole`/`requireAdmin` on top for RBAC (spec 3).
-  app.use("/api/v1", authenticate, studiesRouter, studyTypesRouter, tasksRouter, dashboardRouter);
+  app.use(
+    "/api/v1",
+    authenticate,
+    studiesRouter,
+    studyTypesRouter,
+    tasksRouter,
+    dashboardRouter,
+    attachmentsRouter
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);

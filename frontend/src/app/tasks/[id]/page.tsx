@@ -4,12 +4,13 @@ import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { Task, TaskComment, TaskDateHistoryEntry, TaskStatusHistoryEntry, Study } from "@/lib/types";
+import { Attachment, Task, TaskComment, TaskDateHistoryEntry, TaskStatusHistoryEntry, Study } from "@/lib/types";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { TaskStatusBadge } from "@/components/Badge";
 import { Card, ErrorBanner } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { TaskComments } from "@/components/TaskComments";
+import { Attachments } from "@/components/Attachments";
 
 type TaskDetail = Task & { study: Study };
 
@@ -28,6 +29,10 @@ export default function TaskDetailPage() {
   );
   const { data: comments, reload: reloadComments } = useApi<TaskComment[]>(
     () => api.get(`/tasks/${id}/comments`),
+    [id]
+  );
+  const { data: attachments, reload: reloadAttachments } = useApi<Attachment[]>(
+    () => api.get(`/tasks/${id}/attachments`),
     [id]
   );
 
@@ -140,11 +145,24 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      <div className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-gray-700">Notes</h2>
-        <Card className="p-4">
-          <TaskComments taskId={task.id} comments={comments ?? []} onChange={reloadComments} />
-        </Card>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div>
+          <h2 className="mb-2 text-sm font-semibold text-gray-700">Notes</h2>
+          <Card className="p-4">
+            <TaskComments taskId={task.id} comments={comments ?? []} onChange={reloadComments} />
+          </Card>
+        </div>
+
+        <div>
+          <h2 className="mb-2 text-sm font-semibold text-gray-700">Attachments</h2>
+          <Card className="p-4">
+            <Attachments
+              uploadUrl={`/tasks/${task.id}/attachments`}
+              attachments={attachments ?? []}
+              onChange={reloadAttachments}
+            />
+          </Card>
+        </div>
       </div>
     </AuthGate>
   );

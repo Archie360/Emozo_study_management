@@ -74,6 +74,7 @@ model User {
   statusHistoryChanges TaskStatusHistory[]
   auditLogs            AuditLog[]
   taskComments         TaskComment[]
+  uploadedAttachments  Attachment[]
 
   @@map("users")
 }
@@ -170,7 +171,8 @@ model Study {
   // Optimistic concurrency (spec 49)
   version                       Int         @default(1)
 
-  tasks Task[]
+  tasks       Task[]
+  attachments Attachment[]
 
   @@index([status])
   @@index([ownerUserId])
@@ -211,6 +213,7 @@ model Task {
   dateHistory   TaskDateHistory[]
   statusHistory TaskStatusHistory[]
   comments      TaskComment[]
+  attachments   Attachment[]
 
   @@index([studyId])
   @@index([status])
@@ -232,6 +235,31 @@ model TaskComment {
 
   @@index([taskId])
   @@map("task_comments")
+}
+
+// A file uploaded to a Study (taskId null) or to one of its Tasks (taskId
+// set) — the bytes live in Supabase Storage (S3-compatible); this row is
+// just the pointer/metadata. Always scoped to a Study even when it's really
+// a Task's attachment, so "every attachment on this Study" is one query.
+model Attachment {
+  id           String   @id @default(uuid())
+  studyId      String   @map("study_id")
+  study        Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  taskId       String?  @map("task_id")
+  task         Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName     String   @map("file_name")
+  contentType  String   @map("content_type")
+  sizeBytes    Int      @map("size_bytes")
+  // Object key in the storage bucket — not a public URL; downloads go
+  // through a short-lived signed URL generated on request.
+  storageKey   String   @map("storage_key")
+  uploadedById String   @map("uploaded_by")
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([studyId])
+  @@index([taskId])
+  @@map("attachments")
 }
 
 // 8. TASK Date History

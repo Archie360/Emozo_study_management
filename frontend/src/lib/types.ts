@@ -65,6 +65,22 @@ export interface TaskComment {
   author: User;
 }
 
+export interface Attachment {
+  id: string;
+  studyId: string;
+  taskId: string | null;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  storageKey: string;
+  uploadedById: string;
+  uploadedBy: User;
+  createdAt: string;
+  // Short-lived signed download URL — present on every API response, not
+  // stored anywhere; re-fetch the list if it expires.
+  url: string;
+}
+
 export interface TaskDateHistoryEntry {
   id: string;
   taskId: string;

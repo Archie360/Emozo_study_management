@@ -6,12 +6,13 @@ import { useParams, useRouter } from "next/navigation";
 import { AuthGate } from "@/components/AuthGate";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { Study, StudyStatus, Task, TaskComment, TaskStatus } from "@/lib/types";
+import { Attachment, Study, StudyStatus, Task, TaskComment, TaskStatus } from "@/lib/types";
 import { formatCurrency, formatDate, formatScheduleVariance, toInputDate } from "@/lib/format";
 import { StudyStatusBadge, TaskStatusBadge, PriorityBadge } from "@/components/Badge";
 import { Button, Card, ErrorBanner, Field, inputClass, Modal, ProgressBar, SuccessToast } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { NoteIcon, TaskComments } from "@/components/TaskComments";
+import { Attachments, PaperclipIcon } from "@/components/Attachments";
 import { CURRENCIES } from "@/lib/currencies";
 
 // Opens the viewer's own email client with a draft addressed to the Study's
@@ -52,12 +53,17 @@ type ModalState =
   | { type: "changeTaskStatus"; task: Task }
   | { type: "deleteTask"; task: Task }
   | { type: "taskComments"; task: Task }
+  | { type: "taskAttachments"; task: Task }
   | { type: "markSelectedNotApplicable" };
 
 export default function StudyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: study, loading, error, reload } = useApi<Study>(() => api.get(`/studies/${id}`), [id]);
+  const { data: attachments, reload: reloadAttachments } = useApi<Attachment[]>(
+    () => api.get(`/studies/${id}/attachments`),
+    [id]
+  );
   const [modal, setModal] = useState<ModalState>({ type: "none" });
   const [toast, setToast] = useState<string | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
@@ -282,6 +288,14 @@ export default function StudyDetailPage() {
                     >
                       <NoteIcon className="h-3.5 w-3.5" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setModal({ type: "taskAttachments", task })}
+                      className="text-gray-400 hover:text-gray-700"
+                      title="Attachments"
+                    >
+                      <PaperclipIcon className="h-3.5 w-3.5" />
+                    </button>
                   </span>
                   {task.isFixed && <span className="ml-2 text-xs font-normal text-gray-400">Fixed</span>}
                 </td>
@@ -321,6 +335,17 @@ export default function StudyDetailPage() {
           </tbody>
         </table>
       </Card>
+
+      <div className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold text-gray-700">Attachments</h2>
+        <Card className="p-4">
+          <Attachments
+            uploadUrl={`/studies/${study.id}/attachments`}
+            attachments={attachments ?? []}
+            onChange={reloadAttachments}
+          />
+        </Card>
+      </div>
 
       {modal.type === "editStudy" && (
         <EditStudyModal study={study} onClose={() => setModal({ type: "none" })} onSaved={closeAndReload} />
@@ -367,6 +392,9 @@ export default function StudyDetailPage() {
       {modal.type === "taskComments" && (
         <TaskCommentsModal task={modal.task} onClose={() => setModal({ type: "none" })} />
       )}
+      {modal.type === "taskAttachments" && (
+        <TaskAttachmentsModal task={modal.task} onClose={() => setModal({ type: "none" })} />
+      )}
     </AuthGate>
   );
 }
@@ -379,6 +407,19 @@ function TaskCommentsModal({ task, onClose }: { task: Task; onClose: () => void 
   return (
     <Modal open title={`Notes — ${task.taskName}`} onClose={onClose}>
       <TaskComments taskId={task.id} comments={comments ?? []} onChange={reload} />
+    </Modal>
+  );
+}
+
+function TaskAttachmentsModal({ task, onClose }: { task: Task; onClose: () => void }) {
+  const { data: attachments, reload } = useApi<Attachment[]>(
+    () => api.get(`/tasks/${task.id}/attachments`),
+    [task.id]
+  );
+
+  return (
+    <Modal open title={`Attachments — ${task.taskName}`} onClose={onClose}>
+      <Attachments uploadUrl={`/tasks/${task.id}/attachments`} attachments={attachments ?? []} onChange={reload} />
     </Modal>
   );
 }

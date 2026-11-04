@@ -14,4 +14,11 @@ export const env = {
   jwtSecret: required("JWT_SECRET", "dev-secret-do-not-use-in-production"),
   databaseUrl: required("DATABASE_URL"),
   frontendUrl: process.env.FRONTEND_URL,
+  // Supabase Storage, accessed via its S3-compatible API. Also optional at
+  // startup — attachment endpoints fail with a clear error until set.
+  s3Endpoint: process.env.SUPABASE_S3_ENDPOINT,
+  s3Region: process.env.SUPABASE_S3_REGION,
+  s3AccessKeyId: process.env.SUPABASE_S3_ACCESS_KEY_ID,
+  s3SecretAccessKey: process.env.SUPABASE_S3_SECRET_ACCESS_KEY,
+  s3Bucket: process.env.SUPABASE_S3_BUCKET,
 };
