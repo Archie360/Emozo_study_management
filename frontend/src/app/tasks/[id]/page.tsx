@@ -5,7 +5,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { Task, TaskComment, TaskDateHistoryEntry, TaskStatusHistoryEntry, Study } from "@/lib/types";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { TaskStatusBadge } from "@/components/Badge";
 import { Card, ErrorBanner } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -94,7 +94,7 @@ export default function TaskDetailPage() {
                       {formatDate(h.newStartDate)} → {formatDate(h.newEndDate)}
                     </td>
                     <td className="px-3 py-2 text-gray-500">{h.changer.name}</td>
-                    <td className="px-3 py-2 text-gray-400">{formatDate(h.changedAt)}</td>
+                    <td className="px-3 py-2 text-gray-400">{formatDateTime(h.changedAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -131,7 +131,7 @@ export default function TaskDetailPage() {
                       <TaskStatusBadge status={h.newStatus} />
                     </td>
                     <td className="px-3 py-2 text-gray-500">{h.changer.name}</td>
-                    <td className="px-3 py-2 text-gray-400">{formatDate(h.changedAt)}</td>
+                    <td className="px-3 py-2 text-gray-400">{formatDateTime(h.changedAt)}</td>
                   </tr>
                 ))}
               </tbody>
